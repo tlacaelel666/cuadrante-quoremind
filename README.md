@@ -126,3 +126,24 @@ redes y circuito cuiantico
     Visualizaciones: Añadir visualizaciones de las curvas de aprendizaje del agente.
 
     Entorno mas complejo: Agregar más objetos y acciones al entorno para una mayor complejidad."""
+    Estructura y Flujo Lógico del Proyecto
+*Descripcion*
+   # Configuración del Entorno Cuántico:
+        Archivo: ibm_setup_conf.py
+        Descripción: Este script se encarga de configurar el entorno de IBM Quantum Experience, estableciendo las credenciales necesarias y seleccionando el backend adecuado para las simulaciones o ejecuciones en hardware real.
+
+   # Definición de la Lógica Bayesiana:
+        Archivo: bayes_logic.py
+        Descripción: Contiene funciones y clases relacionadas con la implementación de la lógica bayesiana aplicada a sistemas cuánticos. Es fundamental para el análisis probabilístico dentro del proyecto.
+
+   # Creación y Manejo del Circuito Cuántico:
+        Archivo: circuito_principal.py
+        Descripción: Define el circuito cuántico principal que se utilizará en el proyecto. Aquí se construyen las puertas cuánticas y se establece la lógica del circuito en función de los objetivos del proyecto.
+
+   # Definición del Modelo Híbrido:
+        Archivo: modelo_hibrido.py
+        Descripción: Implementa el modelo híbrido que combina componentes cuánticos y clásicos. Este archivo integra la red neuronal clásica con el circuito cuántico definido previamente, permitiendo una interacción entre ambos sistemas.
+
+   # Manejo de Objetos Binarios:
+        Archivo: objeto_binario.py
+        Descripción: Define la clase ObjetoBinario, que parece ser utilizada para representar estados o datos en formato binario dentro del entorno simulado.
