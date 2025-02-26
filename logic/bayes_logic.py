@@ -339,10 +339,6 @@ class PRN:
     def __init__(self, influence: float):
         self.influence = influence
 
-# --- Suponiendo que la clase BayesLogic ya está definida en el marco de trabajo ---
-# Por ejemplo:
-# bayes_logic = BayesLogic()
-
 # Instanciar la clase BayesLogic
 bayes_logic = BayesLogic()
 
