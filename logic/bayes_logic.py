@@ -83,7 +83,7 @@ class BayesLogic:
 
     def calculate_joint_probability(self, coherence: float, action: int, prn_influence: float) -> float:
         """
-        Calcula la probabilidad conjunta de A y B basándose en la coherencia, la acción e influencia PRN.
+        Calcula la probabilidad conjunta de A y B basándose en la coherencia, la acción e influencia PRN(Probabilistic Record Noise).
         
         Si la coherencia es mayor que el umbral, se aplican ponderaciones distintas según el valor de 'action'.
         En caso contrario, se retorna un valor fijo de 0.3.
