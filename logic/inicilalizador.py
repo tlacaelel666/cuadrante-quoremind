@@ -4,6 +4,114 @@ from qiskit.circuit import Parameter
 from typing import Callable, Tuple, Optional
 from enum import Enum
 
+# Activation functions and derivatives
+def sigmoid(x: np.ndarray) -> np.ndarray:
+    return 1 / (1 + np.exp(-x))
+
+def sigmoid_derivative(x: np.ndarray) -> np.ndarray:
+    return x * (1 - x)
+
+def tanh(x: np.ndarray) -> np.ndarray:
+    return np.tanh(x)
+
+def tanh_derivative(x: np.ndarray) -> np.ndarray:
+    return 1 - np.tanh(x)**2
+
+def relu(x: np.ndarray) -> np.ndarray:
+    return np.maximum(0, x)
+
+def relu_derivative(x: np.ndarray) -> np.ndarray:
+    return np.where(x > 0, 1, 0)
+
+
+class NeuralNetwork:
+    def __init__(self, input_size: int, hidden_size: list[int], output_size: int, activation: str = "sigmoid"):
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.activation = activation
+        self.weights = []
+        self.biases = []
+        
+        previous_size = input_size
+        for hs in hidden_size:
+            self.weights.append(np.random.randn(previous_size, hs))
+            self.biases.append(np.zeros((1, hs)))
+            previous_size = hs
+        self.weights.append(np.random.randn(previous_size, output_size))
+        self.biases.append(np.zeros((1, output_size)))
+    
+    def activate(self, x: np.ndarray) -> np.ndarray:
+        if self.activation == "sigmoid":
+            return sigmoid(x)
+        elif self.activation == "tanh":
+            return tanh(x)
+        elif self.activation == "relu":
+            return relu(x)
+        else:
+            raise ValueError("Función de activación no reconocida.")
+    
+    def activate_derivative(self, x: np.ndarray) -> np.ndarray:
+        if self.activation == "sigmoid":
+            return sigmoid_derivative(x)
+        elif self.activation == "tanh":
+            return tanh_derivative(x)
+        elif self.activation == "relu":
+            return relu_derivative(x)
+        else:
+            raise ValueError("Función de activación no reconocida.")
+    
+    def forward(self, X: np.ndarray) -> list[np.ndarray]:
+        activations = [X]
+        for w, b in zip(self.weights, self.biases):
+            X = self.activate(np.dot(X, w) + b)
+            activations.append(X)
+        return activations
+    
+    def backward(self, X: np.ndarray, y: np.ndarray, learning_rate: float = 0.1, optimizer: str = "sgd", **kwargs):
+        activations = self.forward(X)
+        output = activations[-1]
+        output_error = y - output
+        deltas = [output_error * self.activate_derivative(activations[-1])]
+        
+        for i in reversed(range(len(self.weights) - 1)):
+            delta = deltas[-1].dot(self.weights[i + 1].T) * self.activate_derivative(activations[i + 1])
+            deltas.append(delta)
+        
+        deltas.reverse()
+        
+        for i in range(len(self.weights)):
+            if optimizer == "sgd":
+                self.weights[i] += activations[i].T.dot(deltas[i]) * learning_rate
+                self.biases[i] += np.sum(deltas[i], axis=0, keepdims=True) * learning_rate
+            elif optimizer == "adam":
+                self._adam(i, activations[i], deltas[i], learning_rate, **kwargs)
+            else:
+                raise ValueError("Optimizador no reconocido.")
+    
+    def _adam(self, layer: int, a: np.ndarray, delta: np.ndarray, learning_rate: float, t: int,
+              beta1=0.9, beta2=0.999, epsilon=1e-8, m_w=None, v_w=None, m_b=None, v_b=None):
+        if not hasattr(self, 'm_w'):
+            self.m_w = [np.zeros_like(w) for w in self.weights]
+            self.v_w = [np.zeros_like(w) for w in self.weights]
+            self.m_b = [np.zeros_like(b) for b in self.biases]
+            self.v_b = [np.zeros_like(b) for b in self.biases]
+        
+        self.m_w[layer] = beta1 * self.m_w[layer] + (1 - beta1) * a.T.dot(delta)
+        self.v_w[layer] = beta2 * self.v_w[layer] + (1 - beta2) * np.square(a.T.dot(delta))
+        
+        m_hat_w = self.m_w[layer] / (1 - beta1**t)
+        v_hat_w = self.v_w[layer] / (1 - beta2**t)
+        
+        self.weights[layer] += learning_rate * m_hat_w / (np.sqrt(v_hat_w) + epsilon)
+        
+        self.m_b[layer] = beta1 * self.m_b[layer] + (1 - beta1) * np.sum(delta, axis=0, keepdims=True)
+        self.v_b[layer] = beta2 * self.v_b[layer] + (1 - beta2) * np.square(np.sum(delta, axis=0, keepdims=True))
+        
+        m_hat_b = self.m_b[layer] / (1 - beta1**t)
+        v_hat_b = self.v_b[layer] / (1 - beta2**t)
+        
+        self.biases[layer] += learning_rate * m_hat_b / (np.sqrt(v_hat_b) + epsilon)
 class ActivationType(Enum):
     SIGMOID = "sigmoid"
     TANH = "tanh"
