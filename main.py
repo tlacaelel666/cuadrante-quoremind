@@ -1,5 +1,5 @@
 #Crear entorno virtual 
-#!pip install virtualenv 
+#!sudo apt install virtualenv 
 #virtualenv env
 #source env/bin/activate 
 # python3 -m main
