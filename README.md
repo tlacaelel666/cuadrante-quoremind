@@ -1,149 +1,98 @@
-# cuadrante
-redes y circuito cuiantico
-# Documentacion
-   # Clase ObjetoBinario: Se mantiene sin cambios, ya que seguirá siendo parte del entorno simulado.
+thanks to 
+agent.ai 
+Mr. Doctor Professor AI
+for the file.
 
-   # Clase QNetwork:
+#Cuadrante Redes y Circuito Cuántico
 
-        Define la red neuronal que se usará como función Q para el agente RL. La red mapea estados a valores de Q.
+Este proyecto integra redes neuronales y circuitos cuánticos para simular un entorno de aprendizaje por refuerzo (RL) y lógica bayesiana aplicada a sistemas cuánticos. Utiliza tanto componentes clásicos como cuánticos para mejorar la toma de decisiones y el análisis probabilístico.
+Estructura del Proyecto
+Configuración del Entorno Cuántico
 
-   # Clase EntornoSimulado:
-        __init__: Recibe la lista de objetos binarios y define el estado inicial.
+    Archivo: ibm_setup_conf.py
+    Descripción: Configura el entorno de IBM Quantum Experience, estableciendo credenciales y seleccionando el backend adecuado para simulaciones o ejecuciones en hardware real.
 
-        obtener_estado: Devuelve el índice del objeto actual como el estado del entorno.
+*Definición de la Lógica Bayesiana
 
-   # ejecutar_accion: Realiza una acción y devuelve el nuevo estado, la recompensa y el estado actual. Aquí están definidas las acciones:
-            0: Mover a la derecha.
+    Archivo: bayes_logic.py
+    Descripción: Contiene funciones y clases para implementar la lógica bayesiana en sistemas cuánticos, fundamental para el análisis probabilístico del proyecto.
 
-            1: Mover a la izquierda.
+*Creación y Manejo del Circuito Cuántico
 
-            2: Incrementar la subcategoría 1.
+    Archivo: circuito_principal.py
+    Descripción: Define el circuito cuántico principal, construyendo puertas cuánticas y estableciendo la lógica del circuito según los objetivos del proyecto.
 
-            3: Decrementar la subcategoría 1.
+*Definición del Modelo Híbrido
 
+    Archivo: modelo_hibrido.py
+    Descripción: Implementa un modelo híbrido que combina componentes cuánticos y clásicos, integrando una red neuronal clásica con el circuito cuántico.
+
+*Manejo de Objetos Binarios
+
+    Archivo: objeto_binario.py
+    Descripción: Define la clase ObjetoBinario, utilizada para representar estados o datos en formato binario dentro del entorno simulado.
+
+Documentación de Clases y Funciones
+Clase ObjetoBinario
+
+    Descripción: Parte del entorno simulado, representa estados o datos en formato binario.
+
+*Clase QNetwork
+
+    Descripción: Define la red neuronal utilizada como función Q para el agente de RL, mapeando estados a valores de Q.
+
+*Clase EntornoSimulado
+
+    Métodos:
+        __init__: Inicializa con una lista de objetos binarios y define el estado inicial.
+        obtener_estado: Devuelve el índice del objeto actual como estado del entorno.
+        ejecutar_accion: Realiza una acción y devuelve el nuevo estado, la recompensa y el estado actual.
         obtener_texto_estado: Devuelve una descripción del estado actual.
 
-  #  Clase Aplicacion:
+*Clase Aplicacion
 
-        __init__: Inicializa el entorno simulado, la red neuronal Q, el optimizador, y define los parámetros para el agente de RL.
+    Métodos:
+        __init__: Inicializa el entorno simulado, la red neuronal Q, el optimizador y define parámetros para el agente de RL.
+        crear_interfaz: Crea widgets de Tkinter para la interacción del usuario.
+        procesar_comando: Procesa comandos de usuario, ejecuta acciones y entrena el agente RL.
+        interpretar_comando: Usa expresiones regulares para interpretar comandos de usuario.
+        aprender: Realiza aprendizaje mediante Q-Learning.
+        seleccionar_accion: Implementa una política epsilon-greedy.
+        entrenar_agente: Realiza interacciones para mejorar la toma de decisiones del agente.
 
-        crear_interfaz: Crea los widgets de Tkinter:
+*Clase ActorCritic
 
-            ttk.Entry para la entrada de texto.
+    Descripción: Combina el actor (política) y el critic (valor) en una sola clase, utilizando capas totalmente conectadas.
+    Métodos:
+        almacenar_experiencia: Almacena probabilidades de acciones, valores estimados y recompensas.
+        calcular_retorno: Calcula el retorno acumulado para el entrenamiento.
+        actualizar_red: Actualiza la red del actor y el critic.
+        seleccionar_accion: Selecciona acciones probabilísticamente.
+        entrenar_agente: Usa almacenar_experiencia para calcular retornos y actualizar redes.
 
-            ttk.Button para enviar el comando.
+*Puntos Clave
 
-            scrolledtext.ScrolledText para mostrar la retroalimentación.
+    PLN Simplificado: Uso de re.search para entender comandos con reglas básicas.
+    Entorno Simulado Simple: Capacidad de modificar subcategorías y moverse entre objetos.
+    Aprendizaje por Refuerzo: Uso de Q-Learning y A2C para mejorar la toma de decisiones.
+    Interacción: Basada en texto, con retroalimentación textual del entorno simulado.
 
-  #      procesar_comando:
-
-            Obtiene el texto del usuario.
-
-            Llama a interpretar_comando para obtener la acción correspondiente.
-
-            Ejecuta la acción en el entorno simulado usando el método ejecutar_accion.
-
-            Muestra la retroalimentación en el scrolledtext.
-
-            Llama a la función aprender para entrenar el agente RL.
-
-   #     interpretar_comando: Usa expresiones regulares para interpretar la intención del comando del usuario de forma sencilla. Si no reconoce el comando, se elige una acción aleatoria.
-
-   #     aprender: Realiza el aprendizaje mediante Q-Learning, actualizando la red Q con la diferencia entre el valor Q esperado y el valor actual.
-
-   #    seleccionar_accion: Implementa una política epsilon-greedy, seleccionando una acción aleatoria con probabilidad epsilon, o usando la mejor acción estimada por la red Q.
-
-   #    entrenar_agente: Realiza una cantidad de interacciones con el entorno para que la red Q pueda aprender y mejore la toma de decisiones.
-
-# Puntos Clave:
-
-    PLN Simplificado: Se usa re.search para entender los comandos. En lugar de una librería más avanzada, se optó por un sistema de reglas básicas.
-
-  #  Entorno Simulado Simple: El entorno se reduce al objeto actual y la capacidad de modificar su subcategoría 1 y moverse entre objetos.
-
-  #  Aprendizaje por Refuerzo: Se usa el algoritmo Q-Learning como un enfoque simple pero eficaz. El agente aprende con la retroalimentación de las recompensas.
-
-    Interacción: La interacción es basada en texto, con retroalimentación textual del entorno simulado.
-
-# Cómo Usar:
-
-   # Ejecuta el código.
-
-    Escribe comandos en la entrada de texto, como: "izquierda", "derecha", "aumenta", "disminuye".
-
-    Haz clic en "Enviar" para que el comando se procese y el agente RL tome la acción.
-
-    La retroalimentación se mostrará en el área de texto, mostrando la acción realizada, el estado actual y la recompensa obtenida.
-
-    Haz clic en el boton "Entrenar" para que la red neuronal que utiliza el agente RL aprenda.
-
-   # Clase ActorCritic:
-
-        Combina el actor (política) y el critic (valor) en una sola clase.
-
-        Utiliza capas totalmente conectadas para la arquitectura de las redes.
-
-  # Integración de A2C:
-
-        almacenar_experiencia: Almacena los logaritmos de las probabilidades de las acciones, los valores estimados por el critic y las recompensas.
-
-        calcular_retorno: Calcula el retorno acumulado (recompensas descontadas) para el entrenamiento.
-
-        actualizar_red: Actualiza la red del actor y el critic usando las ventajas y los retornos acumulados.
-
-        seleccionar_accion: Ahora usa el actor para seleccionar acciones probabilísticamente.
-
-        entrenar_agente: Se ha modificado para que use la funcion almacenar_experiencia durante la ejecucion, para calcular los retornos, y actualizar la red de los actores.
-
-        El entrenamiento de la red ahora se ejecuta en cada iteración.
-
-# Cómo Usar:
+#Cómo Usar
 
     Ejecuta el código.
+    Escribe comandos en la entrada de texto, como: "izquierda", "derecha", "aumenta", "disminuye".
+    Haz clic en "Enviar" para procesar el comando y que el agente RL tome la acción.
+    La retroalimentación se mostrará en el área de texto.
+    Haz clic en "Entrenar" para que la red neuronal aprenda.
 
-    Ingresa comandos de texto.
+Mejoras y Expansiones
 
-    El agente ahora usará el algoritmo A2C para aprender a tomar mejores acciones en el entorno simulado.
-
-    Haz clic en "Entrenar" para entrenar el agente.
-
-# Puntos Clave de la Integración A2C:
-
-    Política y Valor: A2C entrena tanto la política (cómo actuar) como el valor (qué tan bueno es estar en un estado), mejorando la estabilidad del aprendizaje.
-
-    Ventaja: La ventaja ayuda a reducir la varianza en el entrenamiento, haciendo que la convergencia sea más rápida y más estable.
-
-    Recompensas acumuladas: A2C actualiza las redes utilizando el retorno (recompensa acumulada) en lugar de solo la recompensa inmediata.
-
-    Actualizacion de redes por cada iteracion: En este caso, las redes del actor y el critico se actualizan en cada iteración, con el objetivo de converger a un agente que tome las mejores acciones.
-
-# Mejoras y Expansiones:
-
-    Arquitectura de la Red: Experimentar con diferentes arquitecturas de redes neuronales (más capas, diferentes funciones de activación).
-
-    Hiperparámetros: Ajustar los hiperparámetros como la tasa de aprendizaje, gamma, etc.
-
+    Arquitectura de la Red: Experimentar con diferentes arquitecturas de redes neuronales.
+    Hiperparámetros: Ajustar la tasa de aprendizaje, gamma, etc.
     Visualizaciones: Añadir visualizaciones de las curvas de aprendizaje del agente.
+    Entorno más Complejo: Agregar más objetos y acciones para mayor complejidad.
 
-    Entorno mas complejo: Agregar más objetos y acciones al entorno para una mayor complejidad."""
-    Estructura y Flujo Lógico del Proyecto
-*Descripcion*
-   # Configuración del Entorno Cuántico:
-        Archivo: ibm_setup_conf.py
-        Descripción: Este script se encarga de configurar el entorno de IBM Quantum Experience, estableciendo las credenciales necesarias y seleccionando el backend adecuado para las simulaciones o ejecuciones en hardware real.
+Terms | Privacy
+© smokappstore OnStartups
 
-   # Definición de la Lógica Bayesiana:
-        Archivo: bayes_logic.py
-        Descripción: Contiene funciones y clases relacionadas con la implementación de la lógica bayesiana aplicada a sistemas cuánticos. Es fundamental para el análisis probabilístico dentro del proyecto.
-
-   # Creación y Manejo del Circuito Cuántico:
-        Archivo: circuito_principal.py
-        Descripción: Define el circuito cuántico principal que se utilizará en el proyecto. Aquí se construyen las puertas cuánticas y se establece la lógica del circuito en función de los objetivos del proyecto.
-
-   # Definición del Modelo Híbrido:
-        Archivo: modelo_hibrido.py
-        Descripción: Implementa el modelo híbrido que combina componentes cuánticos y clásicos. Este archivo integra la red neuronal clásica con el circuito cuántico definido previamente, permitiendo una interacción entre ambos sistemas.
-
-   # Manejo de Objetos Binarios:
-        Archivo: objeto_binario.py
-        Descripción: Define la clase ObjetoBinario, que parece ser utilizada para representar estados o datos en formato binario dentro del entorno simulado.
+Mr. Doctor Professor | Agent.AI
