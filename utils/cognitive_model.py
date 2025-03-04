@@ -1,102 +1,201 @@
-   def __init__(self, num_positions):         """Initialize QuantumState with the number of possible positions."""         self.num_positions = num_positions         self.probabilities = self.calculate_initial_probabilities()         self.history = [self.probabilities.copy()]      def calculate_initial_probabilities(self):         """Calculate initial probabilities (uniform distribution)."""         initial_probabilities = np.ones(self.num_positions) / self.num_positions         return initial_probabilities   # Example Usage   num_qubits = 2  # Number of qubits for the quantum neuron neuron = QuantumNeuron(num_qubits)  # The number of positions is determined by the number of qubits in the neuron num_positions = 2**num_qubits   quantum_state = QuantumState(num_positions)   # Example Loop :  for _ in range(5):     # 1. Generate random input for the Quantum Neuron:     input_values = np.random.randint(0, 2, size=num_qubits).tolist()      # 2. Build and run the quantum circuit:     neuron.build_circuit(input_values)     counts = neuron.run_circuit()      # 3. Get observed position from the Quantum Neuron's output:     observed_state = max(counts, key=counts.get) # Classical outcome.     observed_position = int(observed_state, 2)      # 4. Now, USE the observed_position to update the QuantumState:     quantum_state.update_probabilities(action=observed_position)       # ... methods and statics functions)     def calculate_initial_probabilities(self):         """         Calculate initial probabilities based on a uniform distribution.         """         initial_probabilities = np.ones(self.num_positions) / self.num_positions  # Uniform distribution         return initial_probabilities     def calculate_num_positions(self):         """         Calculate the number of positions based on capas and estado.          Returns:             int: Number of positions (product of capas and estado length).         """         return len(self.estado) * self.capas      def __init__(self, quantum_neuron: QuantumNeuron):         """         Initialize the QuantumState class with a QuantumNeuron instance.         Calculate num_positions based on the neuron and initialize state.          Args:             quantum_neuron (QuantumNeuron): Instance of QuantumNeuron.         """         self.num_positions = quantum_neuron.calculate_num_positions()         self.history = [self.probabilities.copy()]  # To track probability updates over time          @property     def angles(self):         """         Property to calculate and return angles distributed between 0 and π.                  Returns:             numpy.ndarray: Array of angles.         """         return np.linspace(0, np.pi, self.num_positions)          @property     def probabilities(self):         """         Property to calculate and return normalized probabilities based on squared cosines.                  Returns:             numpy.ndarray: Normalized probabilities for each position.         """         cosines = np.cos(self.angles)         probabilities = cosines**2         return probabilities / np.sum(probabilities)      def calculate_probabilities(self):         """         Calculate initial probabilities using squared cosines of the angles.          Returns:             numpy.ndarray: Normalized probabilities for each position.         """         cosines = np.cos(self.angles)  # Compute cosine values for each angle         probabilities = cosines**2  # Square the cosines to get positive values         return probabilities / np.sum(probabilities)  # Normalize so sum of probabilities is 1      def update_probabilities(self, action, k=0.1):         """         Update the probabilities based on the given action.          Args:             action (int): 0 for moving left, 1 for moving right.             k (float): Scaling factor for probability adjustments.         """         new_probabilities = self.probabilities.copy()         for i in range(self.num_positions):             if action == 1:  # Action to move right                 if i > self.observe_position():                     # Increase probability if position is to the right                     new_probabilities[i] += k * self.probabilities[self.observe_position()]                 elif i < self.observe_position():                     # Decrease probability if position is to the left                     new_probabilities[i] -= k * self.probabilities[self.observe_position()]                 else:                     # Increase probability significantly if it matches the observed position                     new_probabilities[i] += (self.num_positions - 1) * k * self.probabilities[self.observe_position()]             elif action == 0:  # Action to move left                 if i < self.observe_position():                     # Increase probability if position is to the left                     new_probabilities[i] += k * self.probabilities[self.observe_position()]                 elif i > self.observe_position():                     # Decrease probability if position is to the right                     new_probabilities[i] -= k * self.probabilities[self.observe_position()]                 else:                     # Increase probability significantly if it matches the observed position                     new_probabilities[i] += (self.num_positions - 1) * k * self.probabilities[self.observe_position()]          # Normalize probabilities to ensure they sum to 1         new_probabilities = new_probabilities / np.sum(new_probabilities)          self.history.append(new_probabilities.copy())  # Save the updated probabilities to history      def observe_position(self):         """         Observes the position, causing wave function collapse.              Returns:             int: The observed position.         """         observed_position = np.random.choice(self.num_positions, p=self.probabilities)         new_probabilities = np.zeros(self.num_positions)         new_probabilities[observed_position] = 1  # Collapse to the observed state         self.history.append(new_probabilities.copy())  # Save collapsed state in history         return observed_position           def get_probabilities(self):         """         Get the current probabilities.              Returns:             numpy.ndarray: Current probabilities.         """         return self.probabilities     def plot_probabilities(self):         """Prints a text-based representation of the probability evolution."""         print("Probability Evolution Over Time")         [print(f"Position {i}: {[round(state[i], 3) for state in  self.history]}") for i in range(self.num_positions)] 
-Output
+import numpy as np
+import matplotlib.pyplot as plt
+from typing import List, Tuple, Optional
+import logging
 
-python import numpy as np
+class QuantumState:
+    def __init__(
+        self, 
+        num_positions: int, 
+        learning_rate: float = 0.1, 
+        random_seed: Optional[int] = None
+    ):
+        """
+        Initialize a probabilistic quantum state simulation.
 
-class QuantumState: 
-def init(self, num_positions): """Initialize QuantumState with the number of possible positions.""" self.num_positions = num_positions self.probabilities = self.calculate_initial_probabilities() self.history = [self.probabilities.copy()] self.information_history = []
+        Args:
+            num_positions (int): Total number of possible quantum positions.
+            learning_rate (float, optional): Learning rate for probability updates. Defaults to 0.1.
+            random_seed (int, optional): Seed for reproducibility. Defaults to None.
+        """
+        # Set random seed for reproducibility
+        if random_seed is not None:
+            np.random.seed(random_seed)
 
-def calculate_initial_probabilities(self):
-    """Calculate initial probabilities (uniform distribution)."""
-    initial_probabilities = np.ones(self.num_positions) / self.num_positions
-    return initial_probabilities
+        # Logging configuration
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s')
+        self.logger = logging.getLogger(__name__)
 
-@property
-def angles(self):
-    """Property to calculate and return angles distributed between 0 and π."""
-    return np.linspace(0, np.pi, self.num_positions)
+        # State parameters
+        self.num_positions = num_positions
+        self.learning_rate = learning_rate
 
-@property
-def probabilities(self):
-    """Property to calculate and return normalized probabilities based on squared cosines."""
-    cosines = np.cos(self.angles)
-    probabilities = cosines**2
-    return probabilities / np.sum(probabilities)
+        # Initialize state tracking
+        self.probabilities = self._initialize_probabilities()
+        self.history: List[np.ndarray] = [self.probabilities.copy()]
+        self.information_entropy: List[float] = []
+        self.information_history: List[Tuple[int, float]] = []
 
-def calculate_probabilities(self):
-    """Calculate initial probabilities using squared cosines of the angles."""
-    cosines = np.cos(self.angles)
-    probabilities = cosines**2
-    return probabilities / np.sum(probabilities)
+        # Log initialization
+        self.logger.info(f"Quantum State initialized with {num_positions} positions")
 
-def update_probabilities(self, action, k=0.1):
-    """Update the probabilities based on the given action."""
-    new_probabilities = self.probabilities.copy()
-    for i in range(self.num_positions):
-        if action == 1:  # Action to move right
-            if i > self.observe_position():
-                new_probabilities[i] += k * self.probabilities[self.observe_position()]
-            elif i < self.observe_position():
-                new_probabilities[i] -= k * self.probabilities[self.observe_position()]
-            else:
-                new_probabilities[i] += (self.num_positions - 1) * k * self.probabilities[self.observe_position()]
-        elif action == 0:  # Action to move left
-            if i < self.observe_position():
-                new_probabilities[i] += k * self.probabilities[self.observe_position()]
-            elif i > self.observe_position():
-                new_probabilities[i] -= k * self.probabilities[self.observe_position()]
-            else:
-                new_probabilities[i] += (self.num_positions - 1) * k * self.probabilities[self.observe_position()]
+    def _initialize_probabilities(self) -> np.ndarray:
+        """
+        Create initial probability distribution.
 
-    # Normalize probabilities to ensure they sum to 1
-    new_probabilities = new_probabilities / np.sum(new_probabilities)
-    self.history.append(new_probabilities.copy())
+        Returns:
+            np.ndarray: Uniform probability distribution
+        """
+        return np.full(self.num_positions, 1.0 / self.num_positions)
 
-    # Measure information quality and quantity
-    self.measure_information_quality(action, new_probabilities)
+    @property
+    def angles(self) -> np.ndarray:
+        """
+        Generate quantum state angles using non-uniform distribution.
 
-def observe_position(self):
-    """Observes the position, causing wave function collapse."""
-    observed_position = np.random.choice(self.num_positions, p=self.probabilities)
-    new_probabilities = np.zeros(self.num_positions)
-    new_probabilities[observed_position] = 1
-    self.history.append(new_probabilities.copy())
-    return observed_position
+        Returns:
+            np.ndarray: Angles distributed between 0 and π
+        """
+        return np.linspace(0, np.pi, self.num_positions, endpoint=True)
 
-def measure_information_quality(self, action, new_probabilities):
-    """Measure the quality and quantity of information."""
-    # Calculate information gain
-    information_gain = np.sum(np.abs(new_probabilities - self.probabilities))
-    self.information_history.append((action, information_gain))
+    def update_probabilities(self, action: int) -> None:
+        """
+        Update quantum state probabilities based on observed action.
 
-def get_probabilities(self):
-    """Get the current probabilities."""
-    return self.probabilities
+        Args:
+            action (int): Action influencing probability distribution (0 or 1)
+        """
+        try:
+            observed_pos = self.observe_position()
 
-def plot_probabilities(self):
-    """Prints a text-based representation of the probability evolution."""
-    print("Probability Evolution Over Time")
-    [print(f"Position {i}: {[round(state[i], 3) for state in self.history]}") for i in range(self.num_positions)]
+            # Compute proximity-based adjustment
+            direction_factor = 1 if action == 1 else -1
+            proximity_mask = np.abs(np.arange(self.num_positions) - observed_pos)
+            adjustment = direction_factor * self.learning_rate / (proximity_mask + 1)
 
-def plot_information_history(self):
-    """Prints a text-based representation of the information history."""
-    print("Information History")
-    for action, info_gain in self.information_history:
-        print(f"Action: {action}, Information Gain: {info_gain:.3f}")
-Example Usage
-num_qubits = 2 # Number of qubits for the quantum neuron num_positions = 2**num_qubits quantum_state = QuantumState(num_positions)
+            # Update probabilities with safeguards
+            new_probabilities = np.clip(
+                self.probabilities + adjustment, 
+                0, 
+                None  # No upper bound
+            )
+            new_probabilities /= new_probabilities.sum()  # Normalize
 
-#Example Loop
-for _ in range(5): # Simulate an action (0 or 1) action = np.random.randint(0, 2) quantum_state.update_probabilities(action=action)
+            # Compute information metrics
+            entropy = self._compute_entropy(new_probabilities)
+            info_gain = np.sum(np.abs(new_probabilities - self.probabilities))
 
-quantum_state.plot_probabilities() quantum_state.plot_information_history()
+            # Update state
+            self.probabilities = new_probabilities
+            self.history.append(new_probabilities.copy())
+            self.information_entropy.append(entropy)
+            self.information_history.append((action, info_gain))
 
-"""
-Explicación:
-measure_information_quality: Este método mide la "calidad" de la información observada calculando la ganancia de información, que es la diferencia entre las probabilidades nuevas y las anteriores. Esto se almacena en information_history.
+        except Exception as e:
+            self.logger.error(f"Error in probability update: {e}")
+            raise
 
-plot_information_history: Este método imprime la historia de la información, mostrando cómo cada acción ha afectado la ganancia de información.
+    def _compute_entropy(self, probabilities: np.ndarray) -> float:
+        """
+        Compute Shannon entropy of the probability distribution.
 
-Este enfoque permite que el sistema "aprenda" y se adapte a la información observada, lo que puede interpretarse como una forma de "conciencia" en el contexto de un sistema cuántico.
+        Args:
+            probabilities (np.ndarray): Probability distribution
 
-"""
+        Returns:
+            float: Entropy value
+        """
+        # Add small epsilon to prevent log(0)
+        return -np.sum(probabilities * np.log2(probabilities + 1e-10))
+
+    def observe_position(self) -> int:
+        """
+        Simulate quantum state observation with probabilistic collapse.
+
+        Returns:
+            int: Observed quantum position
+        """
+        return np.random.choice(self.num_positions, p=self.probabilities)
+
+    def visualize_state_evolution(self, save_path: Optional[str] = None) -> None:
+        """
+        Create comprehensive visualization of quantum state evolution.
+
+        Args:
+            save_path (str, optional): Path to save visualization. Defaults to None.
+        """
+        plt.figure(figsize=(16, 12))
+        plt.suptitle('Quantum State Evolution Metrics', fontsize=16)
+
+        # Probability evolution heatmap
+        plt.subplot(2, 2, 1)
+        plt.imshow(np.array(self.history), aspect='auto', cmap='viridis')
+        plt.title('Probability Evolution')
+        plt.xlabel('Position')
+        plt.ylabel('Time Step')
+        plt.colorbar(label='Probability')
+
+        # Information entropy plot
+        plt.subplot(2, 2, 2)
+        plt.plot(self.information_entropy, label='Entropy')
+        plt.title('Information Entropy Over Time')
+        plt.xlabel('Time Step')
+        plt.ylabel('Entropy')
+        plt.legend()
+
+        # Information gain plot
+        plt.subplot(2, 2, 3)
+        info_gains = [gain for _, gain in self.information_history]
+        plt.plot(info_gains, label='Information Gain', color='orange')
+        plt.title('Information Gain')
+        plt.xlabel('Time Step')
+        plt.ylabel('Gain')
+        plt.legend()
+
+        # Final state probability distribution
+        plt.subplot(2, 2, 4)
+        plt.bar(range(self.num_positions), self.probabilities)
+        plt.title('Final Probability Distribution')
+        plt.xlabel('Position')
+        plt.ylabel('Probability')
+
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path)
+            self.logger.info(f"Visualization saved to {save_path}")
+        else:
+            plt.show()
+
+def simulate_quantum_state(
+    num_qubits: int = 4, 
+    num_iterations: int = 50, 
+    random_seed: Optional[int] = None
+) -> QuantumState:
+    """
+    Simulate quantum state evolution.
+
+    Args:
+        num_qubits (int, optional): Number of qubits. Defaults to 4.
+        num_iterations (int, optional): Number of evolution iterations. Defaults to 50.
+        random_seed (int, optional): Random seed for reproducibility. Defaults to None.
+
+    Returns:
+        QuantumState: Evolved quantum state
+    """
+    num_positions = 2**num_qubits
+    quantum_state = QuantumState(num_positions, random_seed=random_seed)
+
+    for _ in range(num_iterations):
+        action = np.random.randint(0, 2)
+        quantum_state.update_probabilities(action)
+
+    return quantum_state
+
+def main():
+    # Simulate and visualize quantum state
+    quantum_state = simulate_quantum_state(num_qubits=4, random_seed=42)
+    quantum_state.visualize_state_evolution(save_path='quantum_state_evolution.png')
+
+if __name__ == "__main__":
+    main()
