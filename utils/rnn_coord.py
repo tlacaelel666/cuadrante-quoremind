@@ -129,3 +129,169 @@ def predict(self, X, sequence_length, rnn_weight=0.7):
     linear_pred = self.linear_model.predict(X_scaled)
     combined_pred = (rnn_weight * rnn_pred + (1 - rnn_weight) * linear_pred[sequence_length:])
     return combined_pred
+
+#aprenfizaje cuántico 
+import numpy as np
+import ast
+import random
+from typing import Dict, Any, List
+
+class QuantumLearningAgent:
+    """
+    Agente que combina conceptos de estado cuántico con estrategias de aprendizaje.
+    """
+    def __init__(
+        self, 
+        name: str, 
+        num_qubits: int = 4, 
+        learning_rate: float = 0.1
+    ):
+        """
+        Inicializa un agente de aprendizaje cuántico.
+
+        Args:
+            name (str): Nombre del agente.
+            num_qubits (int): Número de qubits para el estado cuántico.
+            learning_rate (float): Tasa de aprendizaje.
+        """
+        self.name = name
+        
+        # Estado cuántico como base para el aprendizaje
+        num_positions = 2**num_qubits
+        self.quantum_state = QuantumState(num_positions, learning_rate)
+        
+        # Componentes de aprendizaje
+        self.memory: List[Dict[str, Any]] = []
+        self.total_reward = 0
+        
+        # Configuración de aprendizaje
+        self.learning_rate = learning_rate
+        self.exploration_rate = 0.1
+
+    def quantum_observe(self) -> int:
+        """
+        Observa el estado cuántico utilizando probabilidades.
+
+        Returns:
+            int: Posición observada
+        """
+        return self.quantum_state.observe_position()
+
+    def update_quantum_state(self, action: int) -> None:
+        """
+        Actualiza el estado cuántico basado en una acción.
+
+        Args:
+            action (int): Acción tomada (0 o 1)
+        """
+        self.quantum_state.update_probabilities(action)
+
+    def learn_from_experience(self, experience: Dict[str, Any]) -> None:
+        """
+        Aprende de una experiencia almacenada.
+
+        Args:
+            experience (Dict[str, Any]): Diccionario de experiencia.
+        """
+        # Almacenar experiencia
+        self.memory.append(experience)
+        
+        # Simular actualización basada en recompensa
+        reward = experience.get('reward', 0)
+        self.total_reward += reward
+        
+        # Actualizar estado cuántico
+        action = experience.get('action', 0)
+        self.update_quantum_state(action)
+
+    def choose_action(self, state: Dict[str, Any]) -> int:
+        """
+        Elige una acción utilizando estrategia epsilon-greedy con estado cuántico.
+
+        Args:
+            state (Dict[str, Any]): Estado actual del entorno.
+
+        Returns:
+            int: Acción elegida (0 o 1)
+        """
+        # Exploración basada en probabilidades cuánticas
+        if random.random() < self.exploration_rate:
+            return random.randint(0, 1)
+        
+        # Explotación usando probabilidades del estado cuántico
+        probabilities = self.quantum_state.probabilities
+        return np.argmax(probabilities)
+
+    def simulate_interaction(self, num_iterations: int = 50) -> None:
+        """
+        Simula una serie de interacciones e iteraciones de aprendizaje.
+
+        Args:
+            num_iterations (int): Número de iteraciones de simulación.
+        """
+        print(f"Iniciando simulación para {self.name}")
+        
+        for iteration in range(num_iterations):
+            # Simular estado
+            current_state = {
+                'iteration': iteration,
+                'random_factor': random.random()
+            }
+            
+            # Elegir acción
+            action = self.choose_action(current_state)
+            
+            # Simular recompensa (lógica simplificada)
+            reward = self._calculate_reward(action, current_state)
+            
+            # Crear experiencia
+            experience = {
+                'state': current_state,
+                'action': action,
+                'reward': reward
+            }
+            
+            # Aprender de la experiencia
+            self.learn_from_experience(experience)
+        
+        # Visualizar resultados
+        self.quantum_state.visualize_state_evolution(
+            save_path=f'{self.name}_quantum_evolution.png'
+        )
+
+    def _calculate_reward(self, action: int, state: Dict[str, Any]) -> float:
+        """
+        Calcula una recompensa simulada basada en la acción y el estado.
+
+        Args:
+            action (int): Acción tomada
+            state (Dict[str, Any]): Estado actual
+
+        Returns:
+            float: Recompensa calculada
+        """
+        # Lógica de recompensa basada en características del estado
+        base_reward = state['random_factor']
+        action_modifier = 1 if action == 1 else -0.5
+        
+        return base_reward * action_modifier
+
+def main():
+    """Función principal para demostrar el agente de aprendizaje cuántico."""
+    # Crear agente de aprendizaje cuántico
+    quantum_agent = QuantumLearningAgent(
+        name="QuantumLearningExplorer", 
+        num_qubits=4,
+        learning_rate=0.1
+    )
+    
+    # Simular interacciones
+    quantum_agent.simulate_interaction(num_iterations=100)
+    
+    # Imprimir resumen
+    print(f"\nResumen del Agente {quantum_agent.name}")
+    print(f"Recompensa Total: {quantum_agent.total_reward}")
+    print(f"Número de Experiencias Aprendidas: {len(quantum_agent.memory)}")
+
+if __name__ == "__main__":
+    main()
