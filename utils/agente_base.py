@@ -1,6 +1,6 @@
 """
 This script defines a base class for different types of folder and their respective subclasses.
-Each agent type demonstrates a specific form of machine learning approach: supervised learning
+Each agent type demostrates a specific form of machine learning approach: supervised learning
 and reinforcement learning. The script also includes an example execution to show interactions
 and learning behavior of the folder.
 """
