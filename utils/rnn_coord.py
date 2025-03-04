@@ -121,3 +121,11 @@ if __name__ == "__main__":
     print("Predictions shape:", predictions.shape))
 
 
+def predict(self, X, sequence_length, rnn_weight=0.7):
+    """Makes predictions using both models and combines them with weights"""
+    X_rnn, _ = self.prepare_data(X, sequence_length)
+    X_scaled = self.scaler.transform(X)
+    rnn_pred = self.rnn_model.predict(X_rnn)
+    linear_pred = self.linear_model.predict(X_scaled)
+    combined_pred = (rnn_weight * rnn_pred + (1 - rnn_weight) * linear_pred[sequence_length:])
+    return combined_pred
