@@ -93,3 +93,14 @@ class SecuritySystem:
 
 
 print("security on")
+
+def detect_anomalies(self, interaction):
+    """Detecta anomalías usando Isolation Forest."""
+    if not self.isolation_forest or not self.interactions_log:
+        return False
+
+    # Convertir la interacción a un DataFrame y luego a un vector numérico
+    df = pd.DataFrame([interaction])
+    interaction_vector = pd.get_dummies(df).values.tolist()[0] #one hot encoding.
+
+    return self.isolation_forest.predict([interaction_vector])[0] == -1
