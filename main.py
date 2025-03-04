@@ -54,10 +54,282 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 
+# Importar las clases necesarias de los otros archivos (asegúrate de que estén en el mismo directorio o en el PYTHONPATH)
+from circuito_principal import ResilientQuantumCircuit
+from quantum_neuron import QuantumNeuron, QuantumState
+from sequential import QuantumNetwork, QubitsConfig
+from hybrid_circuit import TimeSeries, calculate_cosines, PRN
+from bayes_logic import BayesLogic, StatisticalAnalysis
+from qiskit_simulation import apply_action_and_get_state
 if __name__ == "__main__":
     main()
 inbox_lr.grid(row=1, column=3, padx=5, pady=2, sticky=tk.W)
+        # main.py
+# --- Clases del Agente y Entorno ---
+class ObjetoBinario:
+    def __init__(self, nombre):
+        self.nombre = nombre
+        self.categorias = ["0000"] * 5
+
+    def actualizar_categoria(self, indice, valor):
+        if 0 <= indice < 5 and 0 <= int(valor) <= 10:
+            self.categorias[indice] = bin(int(valor))[2:].zfill(4)
+        else:
+            raise ValueError("Índice o valor inválido.")
+
+    def obtener_binario(self):
+        return "".join(self.categorias)
+
+    def obtener_categorias(self):
+        return self.categorias
+
+class EntornoSimulado:
+    def __init__(self, objetos):
+        self.objetos = objetos
+        self.estado_actual = 0
+
+    def obtener_estado(self):
+        return self.estado_actual
+
+    def ejecutar_accion(self, accion):
+        if accion == 0:
+            self.estado_actual = (self.estado_actual - 1) % len(self.objetos)
+            recompensa = 1
+        elif accion == 1:
+            self.estado_actual = (self.estado_actual + 1) % len(self.objetos)
+            recompensa = 1
+        elif accion == 2:
+            objeto_actual = self.objetos[self.estado_actual]
+            valor = int(objeto_actual.obtener_categorias()[0], 2)
+            nuevo_valor = min(10, valor + 1)
+            try:
+                objeto_actual.actualizar_categoria(0, str(nuevo_valor))
+                recompensa = 2
+            except:
+                recompensa = -1
+        elif accion == 3:
+            objeto_actual = self.objetos[self.estado_actual]
+            valor = int(objeto_actual.obtener_categorias()[0], 2)
+            nuevo_valor = max(0, valor - 1)
+            try:
+                objeto_actual.actualizar_categoria(0, str(nuevo_valor))
+                recompensa = 2
+            except:
+                recompensa = -1
+        else:
+            recompensa = -1
+        return self.obtener_estado(), recompensa, self.obtener_estado()
+
+    def obtener_texto_estado(self):
+        return f"Objeto actual: {self.objetos[self.estado_actual].nombre}. Valor subcat 1: {int(self.objetos[self.estado_actual].obtener_categorias()[0], 2)}"
+
+    def reiniciar(self):
+        self.estado_actual = 0
+        return self.obtener_estado()
+
+# --- Clases de los modelos de RL ---
+class QNetwork(nn.Module):
+    def __init__(self, state_dim, action_dim, hidden_dim):
+        super(QNetwork, self).__init__()
+        self.fc1 = nn.Linear(state_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, action_dim)
+
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        return self.fc3(x)
+
+class ActorCritic(nn.Module):
+    def __init__(self, state_dim, action_dim, hidden_dim):
+        super(ActorCritic, self).__init__()
+        self.actor_fc1 = nn.Linear(state_dim, hidden_dim)
+        self.actor_fc2 = nn.Linear(hidden_dim, action_dim)
+        self.critic_fc1 = nn.Linear(state_dim, hidden_dim)
+        self.critic_fc2 = nn.Linear(hidden_dim, 1)
+
+    def forward(self, x):
+        actor_x = torch.relu(self.actor_fc1(x))
+        action_probs = torch.softmax(self.actor_fc2(actor_x), dim=-1)
+        critic_x = torch.relu(self.critic_fc1(x))
+        state_value = self.critic_fc2(critic_x)
+        return action_probs, state_value
+
+class AgenteActorCritic:
+    def __init__(self, state_dim, action_dim, hidden_dim, lr=0.001, gamma=0.99):
+        self.actor_critic = ActorCritic(state_dim, action_dim, hidden_dim)
+        self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=lr)
+        self.gamma = gamma
+
+    def seleccionar_accion(self, state):
+        state = torch.FloatTensor(state).unsqueeze(0)
+        action_probs, _ = self.actor_critic(state)
+        action_dist = torch.distributions.Categorical(action_probs)
+        action = action_dist.sample()
+        return action.item()
+
+    def entrenar_agente(self, entorno, num_episodios=500):
+        recompensas_episodios = []
+
+        for episodio in range(num_episodios):
+            log_probs = []
+            values = []
+            rewards = []
+
+            estado = entorno.reiniciar()
+            terminado = False
+            recompensa_episodio = 0
+
+            while not terminado:
+                estado = torch.FloatTensor(estado).unsqueeze(0)
+                action_probs, state_value = self.actor_critic(estado)
+                dist = torch.distributions.Categorical(action_probs)
+                accion = dist.sample()
+                siguiente_estado, recompensa, terminado = entorno.ejecutar_accion(accion.item())
+
+                log_prob = dist.log_prob(accion)
+                log_probs.append(log_prob)
+                values.append(state_value)
+                rewards.append(recompensa)
+
+                estado = siguiente_estado
+                recompensa_episodio += recompensa
+
+            # Actualizar política al final del episodio
+            discounted_rewards = self.calcular_retorno(rewards)
+            discounted_rewards = torch.tensor(discounted_rewards)
+            values = torch.cat(values)
+            advantage = discounted_rewards - values
+
+            actor_loss = -(torch.stack(log_probs) * advantage.detach()).mean()
+            critic_loss = torch.nn.functional.mse_loss(values, discounted_rewards)
+
+            loss = actor_loss + critic_loss
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            recompensas_episodios.append(recompensa_episodio)
+
+        return recompensas_episodios
+
+    def calcular_retorno(self, rewards):
+        retornos = []
+        R = 0
+        for r in reversed(rewards):
+            R = r + self.gamma * R
+            retornos.insert(0, R)
+        return retornos
+
+# --- Clase de la aplicación ---
+class Aplicacion:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Sistema Cuántico Híbrido")
         
+        # Configurar logging
+        logging.basicConfig(level=logging.INFO)
+        global logger
+        logger = logging.getLogger(__name__)
+        
+        # --- Variables de control ---
+        self.usando_quantum = False  # Cambiar a True para usar el modo cuántico
+        
+        # --- Inicializar entorno y agente ---
+        self.objetos = [ObjetoBinario(f"Objeto {i+1}") for i in range(3)]
+        self.entorno = EntornoSimulado(self.objetos)
+        self.state_dim = 1
+        self.action_dim = 4
+        self.hidden_dim = 128
+        self.qnetwork = QNetwork(self.state_dim, self.action_dim, self.hidden_dim)
+        self.q_optimizer = optim.Adam(self.qnetwork.parameters(), lr=0.001)
+        self.actor_critic = AgenteActorCritic(self.state_dim, self.action_dim, self.hidden_dim)
+        self.gamma = 0.99
+        self.epsilon = 0.1
+        self.recompensas_totales = []
+        self.perdidas = []
+        
+        # --- Construir la interfaz ---
+        self.crear_interfaz()
+        self.actualizar_estado_texto()
+    
+    def crear_interfaz(self):
+        """Crea la interfaz gráfica de usuario."""
+        # Panel izquierdo
+        panel_izquierdo = ttk.Frame(self.root)
+        panel_izquierdo.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Área de registro
+        ttk.Label(panel_izquierdo, text="Registro de eventos:").pack(pady=5)
+        self.txt_log = tk.Text(panel_izquierdo, height=20, width=50)
+        self.txt_log.pack(fill=tk.BOTH, expand=True)
+        
+        # Panel derecho
+        panel_derecho = ttk.Frame(self.root)
+        panel_derecho.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Panel de control (derecha superior)
+        frame_control = ttk.LabelFrame(panel_derecho, text="Control Manual")
+        frame_control.pack(fill=tk.X, padx=5, pady=5)
+        
+        # Botones de acción
+        ttk.Button(frame_control, text="Izquierda", command=lambda: self.ejecutar_accion_manual(0)).grid(row=0, column=0, padx=5, pady=5)
+        ttk.Button(frame_control, text="Derecha", command=lambda: self.ejecutar_accion_manual(1)).grid(row=0, column=1, padx=5, pady=5)
+        ttk.Button(frame_control, text="Aumentar", command=lambda: self.ejecutar_accion_manual(2)).grid(row=1, column=0, padx=5, pady=5)
+        ttk.Button(frame_control, text="Disminuir", command=lambda: self.ejecutar_accion_manual(3)).grid(row=1, column=1, padx=5, pady=5)
+        
+        # Entrada de comandos
+        frame_comandos = ttk.LabelFrame(panel_derecho, text="Comandos")
+        frame_comandos.pack(fill=tk.X, padx=5, pady=5)
+        
+        self.txt_comando = ttk.Entry(frame_comandos, width=30)
+        self.txt_comando.pack(side=tk.LEFT, padx=5, pady=5)
+        self.txt_comando.bind("<Return>", lambda event: self.procesar_comando())
+        ttk.Button(frame_comandos, text="Enviar", command=self.procesar_comando).pack(side=tk.LEFT, padx=5, pady=5)
+        
+        # Panel de entrenamiento (derecha superior)
+        frame_entrenamiento = ttk.LabelFrame(panel_derecho, text="Entrenamiento")
+        frame_entrenamiento.pack(fill=tk.X, padx=5, pady=5)
+        
+        # Parámetros de entrenamiento
+        ttk.Label(frame_entrenamiento, text="Algoritmo:").grid(row=0, column=0, sticky=tk.E)
+        self.algoritmo_var = tk.StringVar(value="q_learning")
+        ttk.Combobox(frame_entrenamiento, textvariable=self.algoritmo_var,
+                     values=["q_learning", "actor_critic"]).grid(row=0, column=1, padx=5, pady=2, sticky=tk.W)
+        
+        ttk.Label(frame_entrenamiento, text="Episodios:").grid(row=1, column=0, sticky=tk.E)
+        self.episodios_var = tk.StringVar(value="100")
+        ttk.Entry(frame_entrenamiento, textvariable=self.episodios_var, width=8).grid(row=1, column=1, padx=5, pady=2, sticky=tk.W)
+        
+        ttk.Label(frame_entrenamiento, text="Gamma:").grid(row=0, column=2, sticky=tk.E)
+        self.gamma_var = tk.StringVar(value="0.99")
+        ttk.Entry(frame_entrenamiento, textvariable=self.gamma_var, width=8).grid(row=0, column=3, padx=5, pady=2, sticky=tk.W)
+        
+        ttk.Label(frame_entrenamiento, text="Epsilon:").grid(row=1, column=2, sticky=tk.E)
+        self.epsilon_var = tk.StringVar(value="0.1")
+        ttk.Entry(frame_entrenamiento, textvariable=self.epsilon_var, width=8).grid(row=1, column=3, padx=5, pady=2, sticky=tk.W)
+        
+        ttk.Label(frame_entrenamiento, text="LR:").grid(row=1, column=2, sticky=tk.E)
+        self.lr_var = tk.StringVar(value="0.001")
+        inbox_lr = ttk.Entry(frame_entrenamiento, textvariable=self.lr_var, width=8)
+        
+        # --- Resto del código ---
+
+def run_simulation():
+    # ... (código de simulación de los otros archivos)
+
+if __name__ == "__main__":
+    # --- Crear la aplicación ---
+    root = tk.Tk()
+    aplicacion = Aplicacion(root)
+
+    # --- Redirigir logging al widget de texto ---
+    handler_text = TextHandler(aplicacion.txt_log)
+    handler_text.setLevel(logging.INFO)
+    logger.addHandler(handler_text)
+
+    root.mainloop()
+
         # Botón de entrenamiento
         btn_entrenar = ttk.Button(frame_entrenamiento, text="Entrenar", command=self.entrenar_agente)
         btn_entrenar.grid(row=2, column=0, columnspan=2, pady=10)
