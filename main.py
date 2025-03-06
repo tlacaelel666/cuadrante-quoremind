@@ -1,7 +1,8 @@
-#Crear entorno virtual 
-#!sudo apt install virtualenv 
-#virtualenv env
-#source env/bin/activate 
+# Crear entorno virtual 
+# !sudo apt install virtualenv 
+# virtualenv env
+# source env/bin/activate 
+# main.py
 # python3 -m main
 """
 # 1. Importación de Módulos Necesarios
