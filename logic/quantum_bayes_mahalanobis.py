@@ -3,6 +3,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.spatial.distance import mahalanobis
 from sklearn.covariance import EmpiricalCovariance
+from bayes_logic import BayesLogic,PRN, StatisticalAnalysis, calculate_cousines  # Importamos BayesLogic y StatisticalAnalysis
 
 class QuantumBayesMahalanobis(BayesLogic):
     def __init__(self):
