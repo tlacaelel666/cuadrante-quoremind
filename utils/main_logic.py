@@ -487,3 +487,10 @@ class MainLogic:
         except Exception as e:
             print(f"Error al cargar los modelos y estados: {e}")
             return False
+
+# ejemplo de uso 
+logic = MainLogic()
+data = np.random.rand(100, 5)  # Datos de ejemplo
+results = logic.train_and_predict(data, sequence_length=10)
+quantum_results = logic.quantum_interaction()
+logic.save_all_models("resultados")
