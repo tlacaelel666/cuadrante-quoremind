@@ -16,7 +16,7 @@ from hybrid_circuit import TimeSeries, calculate_cosines, PRN
 from bayes_logic import BayesLogic, StatisticalAnalysis
 from qiskit_simulation import apply_action_and_get_state
 
-# Importar elementos de main.py
+# Importar elementos de main_logic.py
 from main import ObjetoBinario, EntornoSimulado, QNetwork, ActorCritic, AgenteActorCritic, TextHandler
 
 class AplicacionCuantica(tk.Tk):
