@@ -468,7 +468,15 @@ class PRN:
         
         # Elegir el tipo de algoritmo según el peso
         algorithm = self.algorithm_type if weight >= 0.5 else other_prn.algorithm_type
-        
+
+         # Clase PRN modificada para representar números complejos.
+    """
+    def __init__(self, real_component: float, imaginary_component: float, algorithm_type: str = None, **parameters):
+        self.real_component = real_component
+        self.imaginary_component = imaginary_component
+        self.influence = np.sqrt(real_component**2 + imaginary_component**2) #Modulo del numero complejo.
+        self.algorithm_type = algorithm_type
+        self.parameters = parameters
         return PRN(combined_influence, algorithm, **combined_params)
     
     def __str__(self) -> str:
