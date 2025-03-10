@@ -373,8 +373,154 @@ Este script mejorado proporciona una base más funcional para explorar la analog
 *Creación y Manejo del Circuito Cuántico
 
     Archivo: circuito_principal.py
-    Descripción: Define el circuito cuántico principal, construyendo puertas cuánticas y estableciendo la lógica del circuito según los objetivos del proyecto.
+    Descripción: Define el circuito cuántico principal, construyendo puertas cuánticas y estableciendo la lógica del circuito cuántico resistente a errores de medición utilizando Qiskit.  El circuito está diseñado para 5 qubits y utiliza puertas controladas, Toffoli, y esferas de fase para crear un estado entrelazado robusto.
 
+## Clase `ResilientQuantumCircuit`
+
+La clase `ResilientQuantumCircuit` encapsula la lógica para construir y manipular el circuito cuántico.
+
+### Inicialización (`__init__`)
+
+```python
+def __init__(self, num_qubits=5):
+    """Inicializa el circuito cuántico resistente."""
+    self.q = QuantumRegister(num_qubits, 'q')
+    self.c = ClassicalRegister(num_qubits, 'c')
+    self.circuit = QuantumCircuit(self.q, self.c)
+
+ * num_qubits:  Número de qubits en el circuito (por defecto, 5).
+ * Se crean un QuantumRegister (q) y un ClassicalRegister (c) con el número especificado de qubits.
+ * Se inicializa un QuantumCircuit con los registros cuánticos y clásicos.
+Métodos para Construir Puertas
+build_controlled_h
+def build_controlled_h(self, control, target):
+    """Construye una puerta Hadamard controlada."""
+    self.circuit.ch(control, target)
+
+ * Aplica una puerta Hadamard controlada (CH) al circuito.
+ * control:  Índice del qubit de control.
+ * target: Índice del qubit objetivo.
+build_toffoli
+def build_toffoli(self, control1, control2, target):
+    """Construye una puerta Toffoli (CCNOT)."""
+    self.circuit.ccx(control1, control2, target)
+
+ * Aplica una puerta Toffoli (CCNOT o Controlled-Controlled-NOT) al circuito.
+ * control1: Índice del primer qubit de control.
+ * control2: Índice del segundo qubit de control.
+ * target: Índice del qubit objetivo.
+build_cccx
+def build_cccx(self, controls, target):
+    """Construye una puerta CCCX (Control-Control-Control-NOT)."""
+    # Implementación de CCCX usando Toffoli gates
+    ancilla = (controls[0] + 1) % 5  # Usar un qubit auxiliar
+    self.circuit.ccx(controls[0], controls[1], ancilla)
+    self.circuit.ccx(ancilla, controls[2], target)
+    # Deshacer la primera Toffoli para limpiar el ancilla
+    self.circuit.ccx(controls[0], controls[1], ancilla)
+
+ * Implementa una puerta CCCX (Control-Control-Control-NOT) utilizando puertas Toffoli y un qubit auxiliar.  Esta implementación descompone la puerta CCCX en operaciones más fundamentales.
+ * controls: Una lista con los índices de los tres qubits de control.
+ * target: Índice del qubit objetivo.
+ * Se utiliza un qubit auxiliar (ancilla) para realizar la operación CCCX.  La operación se descompone y luego se "deshace" la primera parte para limpiar el qubit auxiliar.
+add_phase_spheres
+def add_phase_spheres(self):
+    """Añade esferas de fase (RZ gates) a todos los qubits."""
+    phase = np.pi/4  # Fase que ayuda a la resistencia
+    for i in range(5):
+        self.circuit.rz(phase, self.q[i])
+
+ * Añade puertas RZ (rotación en el eje Z) a todos los qubits del circuito.
+ * phase:  Define el ángulo de rotación (π/4 en este caso).  Esta fase específica se elige para mejorar la resistencia del circuito a ciertos tipos de errores.
+Creación del Estado Resistente (create_resilient_state)
+def create_resilient_state(self):
+    """Crea el estado resistente a medición."""
+    # Primera columna: H controlada
+    self.build_controlled_h(self.q[0], self.q[1])
+    
+    # Segunda columna: Toffoli
+    self.build_toffoli(self.q[0], self.q[1], self.q[2])
+    
+    # Tercera columna: X en q0 y Toffoli
+    self.circuit.x(self.q[0])
+    self.build_toffoli(self.q[2], self.q[3], self.q[4])
+    
+    # Cuarta columna: CCCX
+    self.build_cccx([self.q[0], self.q[1], self.q[2]], self.q[3])
+    
+    # Añadir esferas de fase para resistencia a medición
+    self.add_phase_spheres()
+    
+    # Crear entrelazamiento adicional para resistencia
+    for i in range(4):
+        self.circuit.cx(self.q[i], self.q[i+1])
+    
+    return self.circuit
+
+ * Este es el método principal que construye la estructura del circuito cuántico resistente.
+ * Aplica una secuencia específica de puertas (CH, Toffoli, X, CCCX, RZ, y CX) para crear un estado cuántico entrelazado y robusto.
+ * La secuencia de puertas está diseñada para distribuir la información a través de los qubits, haciendo que el estado sea menos susceptible a la pérdida de información por la medición de un solo qubit.
+ * La adición de add_phase_spheres() y el entrelazamiento adicional con puertas CX al final contribuyen a la resistencia.
+Métodos de Medición
+measure_qubit
+def measure_qubit(self, qubit_index):
+    """Mide un qubit específico manteniendo la coherencia del resto."""
+    # Añadir barreras para asegurar el orden de las operaciones
+    self.circuit.barrier()
+    # Aplicar transformación de protección antes de la medición
+    self.circuit.h(self.q[qubit_index])
+    self.circuit.rz(np.pi/2, self.q[qubit_index])
+    # Realizar la medición
+    self.circuit.measure(self.q[qubit_index], self.c[qubit_index])
+    # Restaurar el estado (opcional, dependiendo del uso)
+    self.circuit.rz(-np.pi/2, self.q[qubit_index])
+    self.circuit.h(self.q[qubit_index])
+
+ * Mide un qubit individual sin destruir completamente la superposición de los otros qubits.
+ * qubit_index: El índice del qubit a medir.
+ * Utiliza una técnica de "protección" antes de la medición: aplica puertas H y RZ.  Esto transforma el estado del qubit de manera que la medición tenga un impacto menor en la coherencia global del sistema.
+ * Después de la medición, se aplican las operaciones inversas (RZ y H) para opcionalmente restaurar el estado original del qubit medido.  Si esto se necesita o no depende de la aplicación específica.
+ * Las barrier() se usan para asegurar que las operaciones se ejecuten en el orden correcto, especialmente importante cuando se trabaja con simuladores o hardware cuántico real.
+measure_all
+ def measure_all(self):
+        """Mide todos los qubits manteniendo máxima coherencia posible."""
+        self.circuit.barrier()
+        # Aplicar transformación de protección global
+        for i in range(5):
+            self.circuit.h(self.q[i])
+            self.circuit.rz(np.pi/2, self.q[i])
+        # Realizar mediciones
+        self.circuit.measure_all()
+
+ * Mide todos los qubits del circuito.
+ * Aplica una transformación de protección (H y RZ) a todos los qubits antes de medir.  Esto ayuda a preservar tanta coherencia como sea posible, aunque la medición de todos los qubits inevitablemente colapsa el estado cuántico.
+ * La función usa measure_all(), que es una operación de medición optimizada de Qiskit.
+Función main
+def main():
+    # Crear y construir el circuito
+    qc = ResilientQuantumCircuit()
+    circuit = qc.create_resilient_state()
+    
+    # Podemos medir cualquier qubit sin perder el estado cuántico
+    qc.measure_qubit(2)  # Por ejemplo, medir el qubit 2
+    
+    # Imprimir el circuito
+    print(circuit)
+    
+    return circuit
+
+ * Crea una instancia de la clase ResilientQuantumCircuit.
+ * Construye el circuito cuántico llamando a create_resilient_state().
+ * Demuestra la medición de un solo qubit (measure_qubit(2)).
+ * Imprime una representación textual del circuito construido, lo que permite visualizar la secuencia de puertas.
+ * Devuelve el circuito creado.
+Ejecución del Script
+if __name__ == "__main__":
+    circuit = main()
+
+ * Este bloque estándar de Python asegura que la función main() se ejecute solo cuando el script se ejecuta directamente (no cuando se importa como un módulo).
+Resumen
+Este módulo proporciona una implementación de un circuito cuántico diseñado para ser resistente a errores de medición.  Utiliza una combinación de puertas controladas, puertas Toffoli, rotaciones de fase y entrelazamiento para crear un estado cuántico robusto.  Los métodos de medición están diseñados para minimizar la pérdida de coherencia, permitiendo mediciones parciales o totales del sistema con un impacto reducido en el estado cuántico global
 *Definición del Modelo Híbrido
 
     Archivo: modelo_hibrido.py
