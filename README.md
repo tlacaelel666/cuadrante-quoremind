@@ -422,6 +422,97 @@ Clase ObjetoBinario
         seleccionar_accion: Selecciona acciones probabilísticamente.
         entrenar_agente: Usa almacenar_experiencia para calcular retornos y actualizar redes.
 
+graph TD
+    A[Proyecto Cuadrante Redes y Circuito Cuántico] --> B[I. Objetivo General]
+    A --> C[II. Componentes Principales]
+    A --> D[III. Tecnologías Clave]
+    A --> E[IV. Público Objetivo]
+    A --> F[V. Accesibilidad]
+    
+    %% Objetivo General
+    B --> B1[Integrar Redes Neuronales y Circuitos Cuánticos]
+    B1 --> B1A[Simulación de Aprendizaje por Refuerzo en sistemas cuánticos]
+    B1 --> B1B[Aplicación de Lógica Bayesiana para análisis probabilístico cuántico]
+    B1 --> B1C[Crear entorno de toma de decisiones en sistemas híbridos]
+    
+    %% Componentes Principales
+    C --> C1[A. Configuración del Entorno Cuántico]
+    C --> C2[B. Interfaz de Línea de Comandos]
+    C --> C3[C. Lógica Bayesiana]
+    C --> C4[D. Redes Neuronales Cuánticas]
+    C --> C5[E. Entorno de Aprendizaje por Refuerzo]
+    C --> C6[F. Integración de Sistemas Híbridos]
+    
+    %% Configuración del Entorno Cuántico
+    C1 --> C1A[Módulo: ibm_setup_conf.py]
+    C1 --> C1B[Establecer credenciales y backend de IBM Quantum]
+    C1 --> C1C[Permite simulación y ejecución en hardware real]
+    
+    %% Interfaz de Línea de Comandos
+    C2 --> C2A[Módulo: ibm_quantum_cli.py]
+    C2 --> C2B[Herramienta CLI para interactuar con IBM Quantum]
+    C2 --> C2C[Librería Principal: Qiskit]
+    C2 --> C2D[Operaciones Clave]
+    C2D --> C2D1[Verificar estado de backends]
+    C2D --> C2D2[Listar backends disponibles]
+    C2D --> C2D3[Ejecutar circuitos cuánticos]
+    
+    %% Lógica Bayesiana
+    C3 --> C3A[Módulo: bayes_logic.py]
+    C3 --> C3B[Implementar lógica bayesiana para sistemas cuánticos]
+    C3 --> C3C[Componentes Clave]
+    C3C --> C3C1[Clase BayesLogic]
+    C3C1 --> C3C1A[Teorema de Bayes]
+    C3C1 --> C3C1B[Probabilidad condicional]
+    C3C1 --> C3C1C[Toma de decisiones]
+    C3C --> C3C2[Clase PRN]
+    C3C2 --> C3C2A[Modelado de ruido]
+    C3C2 --> C3C2B[Factor de influencia]
+    C3C --> C3C3[Funciones de Análisis]
+    C3C3 --> C3C3A[Entropía de Shannon]
+    C3C3 --> C3C3B[Cosenos Direccionales]
+    C3C3 --> C3C3C[Matriz de Covarianza]
+    C3C3 --> C3C3D[Distancia de Mahalanobis]
+    C3C --> C3C4[Decoradores]
+    C3C4 --> C3C4A[timer_decorator]
+    C3C4 --> C3C4B[validate_input_decorator]
+    
+    %% Redes Neuronales Cuánticas
+    C4 --> C4A[A desarrollar]
+    C4 --> C4B[Modelos que se ejecutan en circuitos cuánticos]
+    
+    %% Entorno de Aprendizaje por Refuerzo
+    C5 --> C5A[A desarrollar]
+    C5 --> C5B[Agentes cuánticos o híbridos]
+    C5 --> C5C[Integración de componentes cuánticos y clásicos]
+    
+    %% Integración de Sistemas Híbridos
+    C6 --> C6A[A desarrollar]
+    C6 --> C6B[Coordinar componentes cuánticos y clásicos]
+    C6 --> C6C[Gestión del flujo de datos]
+    C6 --> C6D[Orquestación de ejecución]
+    
+    %% Tecnologías Clave
+    D --> D1[Computación Cuántica: IBM Quantum Experience - Qiskit]
+    D --> D2[Redes Neuronales: A definir]
+    D --> D3[Lógica Bayesiana: Implementación propia]
+    D --> D4[Lenguaje Principal: Python]
+    
+    %% Público Objetivo
+    E --> E1[Investigadores en computación cuántica y ML]
+    E --> E2[Desarrolladores de sistemas híbridos]
+    E --> E3[Estudiantes y entusiastas]
+    
+    %% Accesibilidad
+    F --> F1[Documentación clara]
+    F --> F2[Código comentado y modularizado]
+    F --> F3[Ejemplos y tutoriales]
+    F --> F4[Licencia MIT]
+    F --> F5[Comunidad y colaboración]
+
+    class A,B,C,D,E,F headline;
+    classDef headline fill:#336699,stroke:#333,stroke-width:1px,color:white,font-weight:bold;
+
 *Puntos Clave
 
     PLN Simplificado: Uso de re.search para entender comandos con reglas básicas.
