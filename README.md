@@ -10,7 +10,27 @@ Estructura del Proyecto
 Configuración del Entorno Cuántico
 
     Archivo: ibm_setup_conf.py
-    Descripción: Configura el entorno de IBM Quantum Experience, estableciendo credenciales y seleccionando el backend adecuado para simulaciones o ejecuciones en hardware real.
+    Objetivo: Configura el entorno de IBM Quantum Experience, estableciendo credenciales y seleccionando el backend adecuado para simulaciones o ejecuciones en hardware real.
+
+### Descripción general
+
+Este script en Python (`ibm_quantum_cli.py`) es una herramienta de línea de comandos (CLI) diseñada para interactuar con los servicios de IBM Quantum. Permite a los usuarios ejecutar operaciones comunes como:
+
+* **Verificar el estado de los backends cuánticos de IBM.**
+* **Listar los backends disponibles.**
+* **Ejecutar un circuito cuántico simple en un backend específico.**
+
+El script utiliza la biblioteca Qiskit de Python para comunicarse con la API de IBM Quantum.
+
+### Uso
+
+Para ejecutar el script, necesitas tener Python 3 instalado y las bibliotecas Qiskit.  Guarda el código en un archivo llamado `ibm_quantum_cli.py`.
+
+**Ejecución básica:**
+
+```bash
+python ibm_quantum_cli.py --token TU_TOKEN --action [acción] --backend [nombre_backend]
+
 
 *Definición de la Lógica Bayesiana
 
