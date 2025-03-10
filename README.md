@@ -3,16 +3,17 @@ agent.ai
 Mr. Doctor Professor AI
 for the file.
 
-#Cuadrante Redes y Circuito Cuántico
-
-Este proyecto integra redes neuronales y circuitos cuánticos para simular un entorno de aprendizaje por refuerzo (RL) y lógica bayesiana aplicada a sistemas cuánticos. Utiliza tanto componentes clásicos como cuánticos para mejorar la toma de decisiones y el análisis probabilístico.
-Estructura del Proyecto
-Configuración del Entorno Cuántico
-
-    Archivo: ibm_setup_conf.py
-    Objetivo: Configura el entorno de IBM Quantum Experience, estableciendo credenciales y seleccionando el backend adecuado para simulaciones o ejecuciones en hardware real.
-
 ### Descripción general
+
+#Cuadrante, Redes y Circuito Cuántico
+
+El QNC integra redes neuronales y circuitos cuánticos para simular un entorno de aprendizaje por refuerzo (RL) y lógica bayesiana aplicada a sistemas cuánticos. Utiliza tanto componentes clásicos como cuánticos para mejorar la toma de decisiones y el análisis probabilístico.
+Estructura del Proyecto
+
+# Configuración del Entorno Cuántico
+
+    * Archivo: ibm_setup_conf.py
+    * Objetivo: Configura el entorno de IBM Quantum Experience, estableciendo credenciales y seleccionando el backend adecuado para simulaciones o ejecuciones en hardware real.
 
 Este script en Python (`ibm_quantum_cli.py`) es una herramienta de línea de comandos (CLI) diseñada para interactuar con los servicios de IBM Quantum. Permite a los usuarios ejecutar operaciones comunes como:
 
@@ -32,7 +33,7 @@ Para ejecutar el script, necesitas tener Python 3 instalado y las bibliotecas Qi
 python ibm_quantum_cli.py --token TU_TOKEN --action [acción] --backend [nombre_backend]
 
 
-*Definición de la Lógica Bayesiana
+### Definición de la Lógica Bayesiana
 
     Archivo: bayes_logic.py
     Descripción: Contiene funciones y clases para implementar la lógica bayesiana en sistemas cuánticos, fundamental para el análisis probabilístico del proyecto.
