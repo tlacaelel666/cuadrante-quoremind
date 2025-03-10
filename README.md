@@ -526,48 +526,88 @@ Este módulo proporciona una implementación de un circuito cuántico diseñado 
     Archivo: modelo_hibrido.py
     Descripción: Implementa un modelo híbrido que combina componentes cuánticos y clásicos, integrando una red neuronal clásica con el circuito cuántico.
 
-*Manejo de Objetos Binarios
+### Objeto Binario. 
 
-    Archivo: objeto_binario.py
-    Descripción: Define la clase ObjetoBinario, utilizada para representar estados o datos en formato binario dentro del entorno simulado.
+# Aplicación de Agente RL con Interfaz Gráfica (Q-Learning y A2C)
 
-Documentación de Clases y Funciones
-Clase ObjetoBinario
+Aplicación basada en Tkinter con dos implementaciones de agentes de aprendizaje por refuerzo (RL): Q-learning y Advantage Actor-Critic (A2C). Ambos interactúan con un entorno simulado de objetos binarios.
 
-    Descripción: Parte del entorno simulado, representa estados o datos en formato binario.
+## Componentes Principales (Compartidos)
 
-*Clase QNetwork
+### Clase `ObjetoBinario`
 
-    Descripción: Define la red neuronal utilizada como función Q para el agente de RL, mapeando estados a valores de Q.
+*   Representa objetos con un nombre y cinco subcategorías binarias de 4 bits (0-10).
+*   `actualizar_categoria(indice, valor)`: Actualiza una subcategoría.
+*   `obtener_binario()`: Devuelve la representación binaria completa.
+*   `obtener_categorias()`: Devuelve las subcategorías binarias.
 
-*Clase EntornoSimulado
+### Clase `EntornoSimulado`
 
-    Métodos:
-        __init__: Inicializa con una lista de objetos binarios y define el estado inicial.
-        obtener_estado: Devuelve el índice del objeto actual como estado del entorno.
-        ejecutar_accion: Realiza una acción y devuelve el nuevo estado, la recompensa y el estado actual.
-        obtener_texto_estado: Devuelve una descripción del estado actual.
+*   Simula el entorno con una lista de instancias de `ObjetoBinario`.
+*   `obtener_estado()`: Devuelve el índice del objeto actual (el estado).
+*   `ejecutar_accion(accion)`: Ejecuta una acción (0: derecha, 1: izquierda, 2: incrementar subcategoría 1, 3: decrementar subcategoría 1), devolviendo el nuevo estado, la recompensa y el nuevo estado.
+*   `obtener_texto_estado()`: Devuelve una descripción textual del estado actual.
 
-*Clase Aplicacion
+### Clase `Aplicacion` (Estructura Base)
 
-    Métodos:
-        __init__: Inicializa el entorno simulado, la red neuronal Q, el optimizador y define parámetros para el agente de RL.
-        crear_interfaz: Crea widgets de Tkinter para la interacción del usuario.
-        procesar_comando: Procesa comandos de usuario, ejecuta acciones y entrena el agente RL.
-        interpretar_comando: Usa expresiones regulares para interpretar comandos de usuario.
-        aprender: Realiza aprendizaje mediante Q-Learning.
-        seleccionar_accion: Implementa una política epsilon-greedy.
-        entrenar_agente: Realiza interacciones para mejorar la toma de decisiones del agente.
+*   `__init__(root)`: Inicializa la aplicación, la GUI, los objetos, el entorno, la red neuronal (Q-Network o ActorCritic), el optimizador y los parámetros de aprendizaje.
+*   `crear_interfaz()`: Construye la GUI de Tkinter (título, entrada de comandos, botón "Enviar", área de texto de retroalimentación, botón "Entrenar").
+*   `procesar_comando()`: Procesa comandos de texto, ejecuta acciones, muestra retroalimentación y llama al método de aprendizaje (específico de Q-learning o A2C).
+*   `interpretar_comando(texto)`:  PLN básico (usando expresiones regulares) para convertir comandos de texto ("derecha", "aumentar", etc.) en acciones numéricas (0, 1, 2, 3).  Por defecto, realiza una acción aleatoria si no se reconoce el comando.
 
-*Clase ActorCritic
+## Implementación con Q-Learning
 
-    Descripción: Combina el actor (política) y el critic (valor) en una sola clase, utilizando capas totalmente conectadas.
-    Métodos:
-        almacenar_experiencia: Almacena probabilidades de acciones, valores estimados y recompensas.
-        calcular_retorno: Calcula el retorno acumulado para el entrenamiento.
-        actualizar_red: Actualiza la red del actor y el critic.
-        seleccionar_accion: Selecciona acciones probabilísticamente.
-        entrenar_agente: Usa almacenar_experiencia para calcular retornos y actualizar redes.
+### Clase `QNetwork`
+
+*   Una red neuronal feedforward simple (tres capas lineales con activaciones ReLU).
+*   `__init__(state_dim, action_dim, hidden_dim)`: Inicializa con las dimensiones del estado/acción y el tamaño de la capa oculta.
+*   `forward(x)`: Toma un estado como entrada y devuelve los Q-valores para cada acción.
+
+### Métodos Específicos de Q-Learning en `Aplicacion`
+
+*   `aprender(state, action, reward, next_state)`: Implementa la actualización de Q-learning usando la ecuación de Bellman. Calcula el Q-valor objetivo, la pérdida (MSE) y actualiza los pesos de la red.
+*   `seleccionar_accion(state)`: Implementa la selección de acciones epsilon-greedy.  Elige una acción aleatoria con probabilidad epsilon (exploración) o la acción con el Q-valor más alto (explotación).
+*   `entrenar_agente()`: Bucle de entrenamiento.  Itera a través de épocas, obtiene el estado, selecciona una acción, la ejecuta, actualiza la Q-network y reduce epsilon.
+
+## Implementación con A2C
+
+### Clase `ActorCritic`
+
+*   Una única red neuronal que contiene tanto el Actor (política) como el Crítico (función de valor).
+*   **Actor:** Capas lineales con una salida softmax (probabilidades de acción).
+*   **Crítico:** Capas lineales con una salida de un solo valor (valor del estado).
+*   `forward(x)`: Devuelve las probabilidades de acción y el valor del estado.
+
+### Métodos Específicos de A2C en `Aplicacion`
+
+*   `almacenar_experiencia(state, action, reward)`: Almacena las probabilidades logarítmicas de las acciones, los valores de los estados y las recompensas.
+*   `calcular_retorno(rewards, gamma)`: Calcula la recompensa acumulativa descontada.
+*   `actualizar_red(discounted_rewards, values, log_probs, gamma)`: Actualiza las redes del Actor y del Crítico. Calcula las ventajas, la pérdida del actor, la pérdida del crítico y realiza la retropropagación.
+*   `seleccionar_accion(state)`: Selecciona una acción utilizando la política del Actor (muestreo multinomial de las probabilidades de acción).
+*   `entrenar_agente()`: Bucle de entrenamiento. Itera, selecciona acciones, las ejecuta, almacena experiencias, calcula recompensas descontadas, actualiza las redes y registra el progreso.
+
+## Cómo Usar
+
+1.  **Asegúrate de que `logic.py` existe** (para el ejemplo `improved_colapso_onda.py`, si estás utilizando esos componentes).
+2.  **Instala las Bibliotecas:** `pip install matplotlib numpy` (y `torch`, `scipy`, `scikit-learn`, `tensorflow`, `tensorflow-probability` si ejecutas los módulos relacionados).
+3.  **Guarda el Código:** Guarda el código deseado (Q-learning o A2C) como un archivo Python.
+4.  **Ejecuta:** Ejecuta el script (por ejemplo, `python tu_nombre_de_archivo.py`).
+5.  **Interactúa:**
+    *   Escribe comandos ("izquierda", "derecha", "aumentar", "disminuir") en la entrada de texto.
+    *   Haz clic en "Enviar" para ejecutar.
+    *   La retroalimentación se muestra en el área de texto.
+    *   Haz clic en "Entrenar" para entrenar al agente.
+
+## Diferencias Clave Resumidas
+
+| Característica    | Q-Learning                                 | A2C                                        |
+| ----------------- | ------------------------------------------ | ------------------------------------------ |
+| Red               | Q-network única (función de valor)          | Actor-Crítico (política y función de valor) |
+| Selección de Acción | Epsilon-greedy                             | Estocástica (muestreo de la política)       |
+| Actualización     | Fuera de la política (ecuación de Bellman)   | En la política (estimación de ventajas)     |
+| Complejidad       | Más simple                                  | Más complejo, potencialmente más estable    |
+
+Esta versión sintetizada proporciona una visión general más concisa del código, adecuada para una comprensión y referencia rápidas. Se omiten las explicaciones detalladas, pero se describen claramente la funcionalidad principal y las diferencias entre las dos implementaciones.
 
 
 *Puntos Clave
