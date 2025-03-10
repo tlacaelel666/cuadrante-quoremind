@@ -284,6 +284,90 @@ La clase `PRN` modela el Ruido Probabilístico de Referencia, que representa una
         3. Selecciona el `algorithm_type` para el nuevo PRN. Si `weight` es >= 0.5, utiliza el `algorithm_type` del `self`, de lo contrario utiliza el de `other_prn`.
         4. Crea y retorna un nuevo objeto `PRN` con la influencia combinada, el algoritmo seleccionado y los parámetros combinados.
    
+## Explicación del script `improved_colapso_onda.py` (Markdown)
+
+### Descripción general
+
+Este script, `improved_colapso_onda.py`, representa una versión mejorada del script anterior, corrigiendo errores y clarificando la simulación del "colapso de onda clásico" y su relación con una red neuronal conceptual. El objetivo principal sigue siendo explorar la analogía del colapso de la función de onda en un contexto clásico, utilizando ondas sinusoidales y un sistema de toma de decisiones basado en la lógica Bayesiana para simular este "colapso".
+
+**Mejoras Clave en esta Versión:**
+
+* **Función `colapso_onda` Definida Correctamente:** Se ha implementado la función `colapso_onda` que faltaba, que ahora contiene la lógica para calcular la entropía de la onda superpuesta, tomar una decisión Bayesiana basada en esta entropía (y otros factores), y simular el "colapso" de la onda ajustando su fase en función de la decisión tomada.
+* **Cálculos Movidos Fuera de la Clase `TimeSeries`:**  Los cálculos incorrectamente colocados dentro de la clase `TimeSeries` (entropía, lógica Bayesiana, etc.) se han **eliminado de la clase**. Estos cálculos ahora se realizan dentro de la función `colapso_onda`, que es el lugar lógico para procesar la onda y simular el colapso.
+* **Visualización Mejorada de la Onda Colapsada:** La función `visualize_wave_and_network` ahora grafica la onda superpuesta (antes del "colapso") y una representación de la onda "colapsada" (después del "colapso") en el mismo gráfico, facilitando la comparación. La fase del estado colapsado se incluye en la leyenda para mayor claridad.
+* **Función `visualize_network` Redundante Eliminada:** Se ha eliminado la función redundante `visualize_network`, utilizando solo `visualize_wave_and_network` para la visualización combinada.
+* **Código Ejecutable y Lógico:** El script ahora es **ejecutable sin errores** (asumiendo que el módulo `logic.py` está presente) y sigue un flujo lógico más claro para la simulación.
+* **Comentarios y Claridad:** Se han añadido comentarios al código para explicar el propósito de las diferentes secciones y funciones.
+
+**Aún Importante Recordar:**
+
+Este script sigue siendo una **simulación y analogía clásica del colapso de la función de onda.** No implementa fenómenos cuánticos reales. La "red neuronal" visualizada es muy conceptual y no realiza un aprendizaje real en este código.
+
+### Módulos Utilizados
+
+* **`typing`:** Para sugerencias de tipo.
+* **`matplotlib.pyplot as plt`:** Para visualización gráfica.
+* **`numpy as np`:** Para computación numérica.
+* **`logic`:** Módulo personalizado que debe contener `BayesLogic`, `shannon_entropy`, y `calculate_cosines`.
+
+### Clases y Funciones Principales (Con Mejoras)
+
+* **`TimeSeries` Class (Corregida):**
+    * **Corrección:** La clase `TimeSeries` ahora solo se encarga de **representar y evaluar ondas sinusoidales**.  Se han eliminado los cálculos incorrectos y mal ubicados dentro de la clase.
+    * **Métodos:**
+        * `__init__`:  Constructor.
+        * `evaluate`: Evalúa la onda en puntos x.
+        * `get_phase`: Retorna la fase actual.
+        * `set_phase`: Establece una nueva fase.
+
+* **`colapso_onda(onda_superpuesta, bayes_logic, prn_influence, previous_action)` Function (NUEVA y CORRECTA):**
+    * **Propósito:** Simular el proceso de "colapso de onda" utilizando la lógica Bayesiana.
+    * **Funcionalidad:**
+        1. **Calcula la Entropía:** Calcula la entropía de Shannon de la onda superpuesta.
+        2. **Define Valor Ambiental:**  Define un valor ambiental (por ejemplo, 0.8) para usar con la función `calculate_cosines`.
+        3. **Calcula Cosenos Directores:** Utiliza `calculate_cosines` con la entropía y el valor ambiental.
+        4. **Calcula Coherencia:** Deriva un valor de "coherencia" a partir de los cosenos directores (esto es un ejemplo simplificado).
+        5. **Toma Decisión Bayesiana:** Utiliza `bayes_logic.calculate_probabilities_and_select_action` para determinar una "acción" probabilística basada en la entropía, coherencia, influencia PRN, y la acción previa.
+        6. **Simula el Estado Colapsado:**  Basándose en la "acción" decidida, simula el "colapso" ajustando la fase de la onda a un valor predefinido (por ejemplo, 180 grados o 0.5 radianes).
+    * **Retorna:** El "estado colapsado" (representado como una fase en radianes) y la "acción seleccionada" (0 o 1).
+
+* **`wave_function(x, t, amplitude, frequency, phase)` Function:**
+    * Función auxiliar para definir una onda sinusoidal dependiente del tiempo y el espacio, utilizada para la visualización. No ha cambiado respecto a la versión anterior.
+
+* **`visualize_wave_and_network(network, iteration, t, estado_colapsado_fase)` Function (MEJORADA):**
+    * **Mejora:**  Ahora grafica tanto la onda superpuesta (antes del "colapso") como la onda "colapsada" (después del "colapso" - representada con una fase ajustada).
+    * **Parámetro Nuevo:** `estado_colapsado_fase`:  Permite pasar la fase del estado colapsado para visualizar la onda colapsada.
+    * **Visualización Combinada:** Muestra subplots para la función de onda (incluyendo incidente, reflejada, superpuesta y colapsada) y el estado de la red neuronal (aunque esta sigue siendo muy básica).
+
+* **Funciones `initialize_node()` y `is_active(node)`:**
+    * Implementaciones simplificadas como placeholders para la visualización básica de la red neuronal.
+
+### Sección de Ejecución Principal (`if __name__ == "__main__":`)
+
+* **Inicialización:** Define parámetros de las ondas, instancia `TimeSeries`, `BayesLogic`, `PRN`, inicializa una "red neuronal" muy simple.
+* **Bucle de Simulación Iterativo:**
+    * En cada iteración, calcula la onda superpuesta.
+    * Llama a `colapso_onda` para simular el colapso y obtener la acción y el estado colapsado.
+    * Ajusta la fase de la onda incidente (como ejemplo de influencia del "colapso" en la siguiente iteración).
+    * Simula la "activación" de nodos en la red neuronal de forma probabilística, dependiente de la acción.
+    * Visualiza la onda (incluyendo el estado colapsado) y la red neuronal.
+    * Imprime información relevante (entropía, coherencia, acción, estado colapsado) para cada iteración.
+
+### Cómo utilizar este módulo
+
+1.  **Asegúrate de tener `logic.py`:**  Verifica que el módulo `logic.py` (del código anterior) esté guardado en el mismo directorio o en un lugar accesible para Python.
+2.  **Instala Bibliotecas:** Asegúrate de tener instaladas las bibliotecas `matplotlib` y `numpy`:
+    ```bash
+    pip install matplotlib numpy
+    ```
+3.  **Guarda el código:** Guarda el código de `improved_colapso_onda.py` en un archivo.
+4.  **Ejecuta el script:** Ejecuta el script desde la línea de comandos:
+    ```bash
+    python improved_colapso_onda.py
+    ```
+5.  **Observa la Visualización:**  El script generará visualizaciones gráficas en cada iteración, mostrando las ondas superpuestas y "colapsadas", junto con una representación del estado de la red neuronal.  La consola imprimirá información numérica para cada iteración.
+
+Este script mejorado proporciona una base más funcional para explorar la analogía del colapso de onda clásico y su potencial relación con conceptos de redes neuronales, aunque sigue siendo importante interpretar los resultados como una **simulación y analogía conceptual, no como una implementación de fenómenos cuánticos reales.**
 
 *Creación y Manejo del Circuito Cuántico
 
