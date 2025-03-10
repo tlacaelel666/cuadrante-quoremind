@@ -43,32 +43,32 @@ python ibm_quantum_cli.py --token TU_TOKEN --action [acción] --backend [nombre_
 
 Este módulo de Python proporciona un conjunto de herramientas para la lógica Bayesiana, modelado de Ruido Probabilístico de Referencia (PRN) y análisis estadístico. Está diseñado para integrar la toma de decisiones probabilísticas con análisis de datos, ofreciendo funcionalidades para:
 
-* **Lógica Bayesiana (`BayesLogic`):**  Implementa el teorema de Bayes para calcular probabilidades posteriores, probabilidades condicionales y tomar decisiones basadas en umbrales probabilísticos.
-* **Ruido Probabilístico de Referencia (`PRN`):** Modela la influencia de factores probabilísticos externos o ruido en el sistema, permitiendo ajustar y combinar estas influencias.
-* **Análisis Estadístico (Funciones Independientes):**  Incluye funciones para calcular entropía de Shannon, cosenos direccionales, matrices de covarianza (utilizando TensorFlow Probability), covarianza entre variables y la distancia de Mahalanobis.
-* **Decoradores:** Utiliza decoradores para medir el tiempo de ejecución de las funciones (`timer_decorator`) y validar los rangos de entrada de los argumentos numéricos (`validate_input_decorator`).
+ **Lógica Bayesiana (`BayesLogic`):**  Implementa el teorema de Bayes para calcular probabilidades posteriores, probabilidades condicionales y tomar decisiones basadas en umbrales probabilísticos.
+ **Ruido Probabilístico de Referencia (`PRN`):** Modela la influencia de factores probabilísticos externos o ruido en el sistema, permitiendo ajustar y combinar estas influencias.
+ **Análisis Estadístico (Funciones Independientes):**  Incluye funciones para calcular entropía de Shannon, cosenos direccionales, matrices de covarianza (utilizando TensorFlow Probability), covarianza entre variables y la distancia de Mahalanobis.
+ **Decoradores:** Utiliza decoradores para medir el tiempo de ejecución de las funciones (`timer_decorator`) y validar los rangos de entrada de los argumentos numéricos (`validate_input_decorator`).
 
 Este módulo es útil en escenarios donde se requiere la toma de decisiones bajo incertidumbre, considerando la influencia de ruido probabilístico y realizando análisis estadísticos para evaluar y comprender los datos.
 
 ### Módulos Utilizados
 
-* **`numpy as np`:**  Librería fundamental para computación numérica en Python. Se utiliza para operaciones matemáticas, manejo de arrays y matrices.
-* **`tensorflow as tf`:**  Plataforma de aprendizaje automático de código abierto. Aquí se utiliza para realizar cálculos tensoriales y funciones estadísticas de `tensorflow_probability`.
-* **`tensorflow_probability as tfp`:**  Librería de TensorFlow que proporciona herramientas para modelado probabilístico y inferencia Bayesiana. Se utiliza para calcular matrices de covarianza.
-* **`typing` (de `typing`):**  Módulo para soporte de sugerencias de tipo (type hints). Ayuda a mejorar la legibilidad y detección de errores en el código.
-* **`scipy.spatial.distance` (de `scipy`):**  Librería para computación científica. Se utiliza el submódulo `spatial.distance` para calcular la distancia de Mahalanobis.
-* **`sklearn.covariance` (de `sklearn`):**  Librería de aprendizaje automático (`scikit-learn`). Se utiliza `EmpiricalCovariance` para estimar la matriz de covarianza empírica, necesaria para la distancia de Mahalanobis.
-* **`functools`:**  Módulo para herramientas de funciones de orden superior. Se utiliza `functools.wraps` para que los decoradores preserven los metadatos de la función original.
-* **`time`:**  Módulo para funciones relacionadas con el tiempo. Se utiliza para medir el tiempo de ejecución de las funciones con el decorador `timer_decorator`.
+ **`numpy as np`:**  Librería fundamental para computación numérica en Python. Se utiliza para operaciones matemáticas, manejo de arrays y matrices.
+ **`tensorflow as tf`:**  Plataforma de aprendizaje automático de código abierto. Aquí se utiliza para realizar cálculos tensoriales y funciones estadísticas de `tensorflow_probability`.
+ **`tensorflow_probability as tfp`:**  Librería de TensorFlow que proporciona herramientas para modelado probabilístico y inferencia Bayesiana. Se utiliza para calcular matrices de covarianza.
+ **`typing` (de `typing`):**  Módulo para soporte de sugerencias de tipo (type hints). Ayuda a mejorar la legibilidad y detección de errores en el código.
+ **`scipy.spatial.distance` (de `scipy`):**  Librería para computación científica. Se utiliza el submódulo `spatial.distance` para calcular la distancia de Mahalanobis.
+ **`sklearn.covariance` (de `sklearn`):**  Librería de aprendizaje automático (`scikit-learn`). Se utiliza `EmpiricalCovariance` para estimar la matriz de covarianza empírica, necesaria para la distancia de Mahalanobis.
+ **`functools`:**  Módulo para herramientas de funciones de orden superior. Se utiliza `functools.wraps` para que los decoradores preserven los metadatos de la función original.
+ **`time`:**  Módulo para funciones relacionadas con el tiempo. Se utiliza para medir el tiempo de ejecución de las funciones con el decorador `timer_decorator`.
 
 ### Decoradores
 
 El módulo define dos decoradores para mejorar la funcionalidad y robustez del código:
 
-* **`timer_decorator(func)`:**
+ **`timer_decorator(func)`:**
     * **Propósito:**  Medir y mostrar el tiempo de ejecución de cualquier función a la que se aplique.
-    * **Uso:** Se aplica a una función utilizando la sintaxis `@timer_decorator` antes de la definición de la función.
-    * **Funcionalidad:**
+     **Uso:** Se aplica a una función utilizando la sintaxis `@timer_decorator` antes de la definición de la función.
+     **Funcionalidad:**
         1. Al decorar una función, `timer_decorator` registra el tiempo de inicio antes de la ejecución de la función original.
         2. Ejecuta la función original.
         3. Registra el tiempo de finalización después de la ejecución.
@@ -85,13 +85,13 @@ El módulo define dos decoradores para mejorar la funcionalidad y robustez del c
     resultado = mi_funcion_lenta() # Imprimirá el tiempo de ejecución al finalizar
     ```
 
-* **`validate_input_decorator(min_val=0.0, max_val=1.0)`:**
-    * **Propósito:**  Validar que los argumentos numéricos (enteros o flotantes) de una función se encuentren dentro de un rango específico [min_val, max_val].
-    * **Parámetros:**
+ **`validate_input_decorator(min_val=0.0, max_val=1.0)`:**
+     **Propósito:**  Validar que los argumentos numéricos (enteros o flotantes) de una función se encuentren dentro de un rango específico [min_val, max_val].
+     **Parámetros:**
         * `min_val` (float): Valor mínimo permitido (por defecto 0.0).
         * `max_val` (float): Valor máximo permitido (por defecto 1.0).
-    * **Uso:** Se aplica a una función utilizando `@validate_input_decorator(min_val, max_val)` antes de la definición de la función, especificando los valores de rango deseados.
-    * **Funcionalidad:**
+     **Uso:** Se aplica a una función utilizando `@validate_input_decorator(min_val, max_val)` antes de la definición de la función, especificando los valores de rango deseados.
+     **Funcionalidad:**
         1. Al decorar una función, `validate_input_decorator` revisa los argumentos posicionales (`*args`, ignorando `self` si es un método de clase) y los argumentos de palabras clave (`**kwargs`).
         2. Para cada argumento que sea de tipo entero o flotante, verifica si está dentro del rango definido por `min_val` y `max_val`.
         3. Si algún argumento está fuera del rango, levanta una excepción `ValueError` indicando el argumento problemático y el rango permitido.
@@ -113,18 +113,18 @@ La clase `BayesLogic` encapsula la lógica para realizar cálculos basados en el
 
 **Atributos de Clase (Constantes):**
 
-* **`EPSILON = 1e-6`:**  Un valor muy pequeño utilizado para evitar divisiones por cero en los cálculos de probabilidad.
-* **`HIGH_ENTROPY_THRESHOLD = 0.8`:** Umbral para determinar si la entropía se considera alta. Valores de entropía superiores a este umbral indican alta incertidumbre en los datos.
-* **`HIGH_COHERENCE_THRESHOLD = 0.6`:** Umbral para determinar si la coherencia se considera alta. Valores de coherencia superiores a este umbral indican alta consistencia en los datos.
-* **`ACTION_THRESHOLD = 0.5`:** Umbral para la toma de decisiones. Si la probabilidad condicional de acción supera este umbral, se decide tomar la acción (representada como 1), de lo contrario no se toma (representada como 0).
+ **`EPSILON = 1e-6`:**  Un valor muy pequeño utilizado para evitar divisiones por cero en los cálculos de probabilidad.
+ **`HIGH_ENTROPY_THRESHOLD = 0.8`:** Umbral para determinar si la entropía se considera alta. Valores de entropía superiores a este umbral indican alta incertidumbre en los datos.
+ **`HIGH_COHERENCE_THRESHOLD = 0.6`:** Umbral para determinar si la coherencia se considera alta. Valores de coherencia superiores a este umbral indican alta consistencia en los datos.
+ **`ACTION_THRESHOLD = 0.5`:** Umbral para la toma de decisiones. Si la probabilidad condicional de acción supera este umbral, se decide tomar la acción (representada como 1), de lo contrario no se toma (representada como 0).
 
 **Métodos de Instancia:**
 
-* **`__init__(self)`:**
+ **`__init__(self)`:**
     * **Propósito:**  Constructor de la clase `BayesLogic`.
     * **Funcionalidad:** Inicializa la clase. En este caso, no realiza ninguna inicialización específica más allá de heredar las constantes de clase.
 
-* **`calculate_posterior_probability(self, prior_a: float, prior_b: float, conditional_b_given_a: float) -> float`:**
+ **`calculate_posterior_probability(self, prior_a: float, prior_b: float, conditional_b_given_a: float) -> float`:**
     * **Propósito:** Calcular la probabilidad posterior P(A|B) utilizando el teorema de Bayes:  P(A|B) = (P(B|A) * P(A)) / P(B).
     * **Parámetros:**
         * `prior_a` (float): Probabilidad previa de A (P(A)).
@@ -134,7 +134,7 @@ La clase `BayesLogic` encapsula la lógica para realizar cálculos basados en el
     * **Validación:** Utiliza el decorador `@validate_input_decorator(0.0, 1.0)` para asegurar que todas las probabilidades de entrada estén en el rango [0, 1].
     * **Manejo de división por cero:** Utiliza `EPSILON` para evitar división por cero si `prior_b` es 0.
 
-* **`calculate_conditional_probability(self, joint_probability: float, prior: float) -> float`:**
+ **`calculate_conditional_probability(self, joint_probability: float, prior: float) -> float`:**
     * **Propósito:** Calcular la probabilidad condicional P(A|B) a partir de la probabilidad conjunta P(A y B) y la probabilidad previa P(B): P(A|B) = P(A y B) / P(B).
     * **Parámetros:**
         * `joint_probability` (float): Probabilidad conjunta P(A y B).
@@ -143,21 +143,21 @@ La clase `BayesLogic` encapsula la lógica para realizar cálculos basados en el
     * **Validación:** Utiliza el decorador `@validate_input_decorator(0.0, 1.0)`.
     * **Manejo de división por cero:** Utiliza `EPSILON` si `prior` es 0.
 
-* **`calculate_high_entropy_prior(self, entropy: float) -> float`:**
+ **`calculate_high_entropy_prior(self, entropy: float) -> float`:**
     * **Propósito:** Derivar una probabilidad previa en función del valor de entropía.
     * **Parámetros:** `entropy` (float): Valor de entropía entre 0 y 1.
     * **Retorna:** float: Probabilidad previa. Retorna 0.3 si la entropía es alta (supera `HIGH_ENTROPY_THRESHOLD`), o 0.1 si es baja.
     * **Lógica:** Asigna una probabilidad previa más alta (0.3) cuando la entropía es alta (incertidumbre alta), y una probabilidad previa más baja (0.1) cuando la entropía es baja (incertidumbre baja).
     * **Validación:** Utiliza el decorador `@validate_input_decorator(0.0, 1.0)`.
 
-* **`calculate_high_coherence_prior(self, coherence: float) -> float`:**
+ **`calculate_high_coherence_prior(self, coherence: float) -> float`:**
     * **Propósito:** Derivar una probabilidad previa en función del valor de coherencia.
     * **Parámetros:** `coherence` (float): Valor de coherencia entre 0 y 1.
     * **Retorna:** float: Probabilidad previa. Retorna 0.6 si la coherencia es alta (supera `HIGH_COHERENCE_THRESHOLD`), o 0.2 si es baja.
     * **Lógica:** Asigna una probabilidad previa más alta (0.6) cuando la coherencia es alta (datos consistentes), y una probabilidad previa más baja (0.2) cuando la coherencia es baja (datos inconsistentes).
     * **Validación:** Utiliza el decorador `@validate_input_decorator(0.0, 1.0)`.
 
-* **`calculate_joint_probability(self, coherence: float, action: int, prn_influence: float) -> float`:**
+ **`calculate_joint_probability(self, coherence: float, action: int, prn_influence: float) -> float`:**
     * **Propósito:** Calcular la probabilidad conjunta P(A y B) basada en la coherencia, una acción binaria (0 o 1), y la influencia PRN.
     * **Parámetros:**
         * `coherence` (float): Valor de coherencia entre 0 y 1.
@@ -206,7 +206,7 @@ Estas funciones proporcionan herramientas estadísticas útiles, separadas de la
         2. Calcula las probabilidades de cada valor.
         3. Utiliza la fórmula de entropía de Shannon:  `- Σ p(x) * log2(p(x))`.
 
-* **`calculate_cosines(entropy: float, prn_object: float) -> Tuple[float, float, float]`:**
+ **`calculate_cosines(entropy: float, prn_object: float) -> Tuple[float, float, float]`:**
     * **Propósito:** Calcular los cosenos direccionales (x, y, z) para un vector 3D, utilizando los valores de entropía y `prn_object` como componentes x e y respectivamente, y 1 como componente z. Los cosenos direccionales representan las componentes normalizadas de un vector en el espacio 3D.
     * **Parámetros:**
         * `entropy` (float): Valor de entropía (componente x).
@@ -214,13 +214,13 @@ Estas funciones proporcionan herramientas estadísticas útiles, separadas de la
     * **Retorna:** tuple: Una tupla `(cos_x, cos_y, cos_z)` con los cosenos direccionales.
     * **Manejo de división por cero:** Evita división por cero si `entropy` o `prn_object` son 0, reemplazándolos con `1e-6`.
 
-* **`calculate_covariance_matrix(data: tf.Tensor) -> np.ndarray`:**
+ **`calculate_covariance_matrix(data: tf.Tensor) -> np.ndarray`:**
     * **Propósito:** Calcular la matriz de covarianza de un conjunto de datos utilizando TensorFlow Probability. La matriz de covarianza describe la variabilidad conjunta de múltiples variables.
     * **Parámetros:** `data` (tf.Tensor): Tensor de datos de TensorFlow (`dtype tf.float32`), donde cada fila es una observación y cada columna es una variable.
     * **Retorna:** np.ndarray: La matriz de covarianza calculada, como un array de NumPy.
     * **Utiliza:** `tfp.stats.covariance` de TensorFlow Probability para el cálculo eficiente de la matriz de covarianza.
 
-* **`calculate_covariance_between_two_variables(data: tf.Tensor) -> Tuple[float, float]`:**
+ **`calculate_covariance_between_two_variables(data: tf.Tensor) -> Tuple[float, float]`:**
     * **Propósito:** Calcular la covarianza entre dos variables, de forma manual y utilizando TensorFlow Probability, para comparación y verificación. La covarianza mide la dirección de la relación lineal entre dos variables.
     * **Parámetros:** `data` (tf.Tensor): Tensor de datos de TensorFlow (`dtype tf.float32`) con dos columnas, cada columna representando una variable.
     * **Retorna:** tuple: Una tupla `(cov_manual, cov_tfp)`:
@@ -228,7 +228,7 @@ Estas funciones proporcionan herramientas estadísticas útiles, separadas de la
         * `cov_tfp`: Covarianza calculada usando `tfp.stats.covariance`.
     * **Cálculo Manual:** Implementa la fórmula de covarianza manual para dos variables.
 
-* **`compute_mahalanobis_distance(data: List[List[float]], point: List[float]) -> float`:**
+ **`compute_mahalanobis_distance(data: List[List[float]], point: List[float]) -> float`:**
     * **Propósito:** Calcular la distancia de Mahalanobis entre un punto y un conjunto de datos. La distancia de Mahalanobis es una medida de distancia que considera la matriz de covarianza de los datos, útil para detectar outliers en espacios multidimensionales.
     * **Parámetros:**
         * `data` (List[List[float]]): Conjunto de datos, donde cada fila es una observación.
@@ -249,15 +249,15 @@ La clase `PRN` modela el Ruido Probabilístico de Referencia, que representa una
 
 **Atributos:**
 
-* **`influence` (float):** Factor de influencia del PRN, un valor entre 0 y 1. Representa la fuerza o magnitud de la influencia del ruido.
-* **`algorithm_type` (str, opcional):** Tipo de algoritmo asociado al PRN (e.g., "bayesian", "monte_carlo"). Es un atributo descriptivo para categorizar o identificar el tipo de ruido.
-* **`parameters` (dict):** Diccionario para almacenar parámetros adicionales específicos del algoritmo asociado al PRN. Permite personalizar el comportamiento del PRN.
-* **`real_component` (float):** Componente real del número complejo PRN.
-* **`imaginary_component` (float):** Componente imaginaria del número complejo PRN.
+ **`influence` (float):** Factor de influencia del PRN, un valor entre 0 y 1. Representa la fuerza o magnitud de la influencia del ruido.
+ **`algorithm_type` (str, opcional):** Tipo de algoritmo asociado al PRN (e.g., "bayesian", "monte_carlo"). Es un atributo descriptivo para categorizar o identificar el tipo de ruido.
+ **`parameters` (dict):** Diccionario para almacenar parámetros adicionales específicos del algoritmo asociado al PRN. Permite personalizar el comportamiento del PRN.
+ **`real_component` (float):** Componente real del número complejo PRN.
+ **`imaginary_component` (float):** Componente imaginaria del número complejo PRN.
 
 **Métodos de Instancia:**
 
-* **`__init__(self, real_component: float, imaginary_component: float, algorithm_type: str = None, **parameters)`:**
+ **`__init__(self, real_component: float, imaginary_component: float, algorithm_type: str = None, **parameters)`:**
     * **Propósito:** Constructor de la clase `PRN`, modificado para representar números complejos.
     * **Parámetros:**
         * `influence` (float): Factor de influencia inicial entre 0 y 1.
@@ -265,7 +265,7 @@ La clase `PRN` modela el Ruido Probabilístico de Referencia, que representa una
         * `**parameters`: Parámetros adicionales específicos del algoritmo.
     * **Validación:** Asegura que `influence` esté en el rango [0, 1].
 
-* **`adjust_influence(self, adjustment: float) -> None`:**
+ **`adjust_influence(self, adjustment: float) -> None`:**
     * **Propósito:** Ajustar el factor de influencia del PRN.
     * **Parámetros:** `adjustment` (float): Valor a sumar (o restar si es negativo) a la influencia actual.
     * **Funcionalidad:**
@@ -273,7 +273,7 @@ La clase `PRN` modela el Ruido Probabilístico de Referencia, que representa una
         2. Valida que la nueva influencia permanezca dentro del rango [0, 1]. Si excede los límites, trunca el valor al límite más cercano y emite una advertencia en consola.
         3. Actualiza el atributo `influence` con el nuevo valor (posiblemente truncado).
 
-* **`combine_with(self, other_prn: 'PRN', weight: float = 0.5) -> 'PRN'`:**
+ **`combine_with(self, other_prn: 'PRN', weight: float = 0.5) -> 'PRN'`:**
     * **Propósito:** Combinar el PRN actual con otro objeto `PRN` para crear un nuevo PRN combinado.
     * **Parámetros:**
         * `other_prn` (`PRN`): Otro objeto `PRN` con el cual combinar.
