@@ -291,30 +291,30 @@ La clase `PRN` modela el Ruido Probabilístico de Referencia, que representa una
 
 Este script, `improved_colapso_onda.py`, representa una versión mejorada del script anterior, corrigiendo errores y clarificando la simulación del "colapso de onda clásico" y su relación con una red neuronal conceptual. El objetivo principal sigue siendo explorar la analogía del colapso de la función de onda en un contexto clásico, utilizando ondas sinusoidales y un sistema de toma de decisiones basado en la lógica Bayesiana para simular este "colapso".
 
-**Mejoras Clave en esta Versión:**
+**:**
 
-* **Función `colapso_onda` Definida Correctamente:** Se ha implementado la función `colapso_onda` que faltaba, que ahora contiene la lógica para calcular la entropía de la onda superpuesta, tomar una decisión Bayesiana basada en esta entropía (y otros factores), y simular el "colapso" de la onda ajustando su fase en función de la decisión tomada.
-* **Cálculos Movidos Fuera de la Clase `TimeSeries`:**  Los cálculos incorrectamente colocados dentro de la clase `TimeSeries` (entropía, lógica Bayesiana, etc.) se han **eliminado de la clase**. Estos cálculos ahora se realizan dentro de la función `colapso_onda`, que es el lugar lógico para procesar la onda y simular el colapso.
-* **Visualización Mejorada de la Onda Colapsada:** La función `visualize_wave_and_network` ahora grafica la onda superpuesta (antes del "colapso") y una representación de la onda "colapsada" (después del "colapso") en el mismo gráfico, facilitando la comparación. La fase del estado colapsado se incluye en la leyenda para mayor claridad.
-* **Función `visualize_network` Redundante Eliminada:** Se ha eliminado la función redundante `visualize_network`, utilizando solo `visualize_wave_and_network` para la visualización combinada.
-* **Código Ejecutable y Lógico:** El script ahora es **ejecutable sin errores** (asumiendo que el módulo `logic.py` está presente) y sigue un flujo lógico más claro para la simulación.
+* **Función `colapso_onda`: contiene la lógica para calcular la entropía de la onda superpuesta, tomar una decisión Bayesiana basada en esta entropía (y otros factores), y simular el "colapso" de la onda ajustando su fase en función de la decisión tomada.
+* **TimeSeries 
+Estos cálculos ahora se realizan dentro de la función `colapso_onda`, que es el lugar lógico para procesar la onda y simular el colapso.
+* **Visualización de la Onda Colapsada:** La función `visualize_wave_and_network` grafica la onda superpuesta (antes del "colapso") y una representación de la onda "colapsada" (después del "colapso") en el mismo gráfico, facilitando la comparación. La fase del estado colapsado se incluye en la leyenda para mayor claridad. `visualize_wave_and_network` para la visualización combinada.
+* **Código Ejecutable y Lógico:** El script es **ejecutable sin errores** (asumiendo que el módulo `logic` está presente) y sigue un flujo lógico para la simulación.
 * **Comentarios y Claridad:** Se han añadido comentarios al código para explicar el propósito de las diferentes secciones y funciones.
 
 **Aún Importante Recordar:**
 
-Este script sigue siendo una **simulación y analogía clásica del colapso de la función de onda.** No implementa fenómenos cuánticos reales. La "red neuronal" visualizada es muy conceptual y no realiza un aprendizaje real en este código.
+Este script sigue siendo una **simulación y analogía clásica del colapso de la función de onda.** No implementa fenómenos cuánticos reales. La "red neuronal" visualizada es muy conceptual y no realiza un aprendizaje real en este código. Esta parte es altamente personalible.
 
 ### Módulos Utilizados
 
 * **`typing`:** Para sugerencias de tipo.
 * **`matplotlib.pyplot as plt`:** Para visualización gráfica.
 * **`numpy as np`:** Para computación numérica.
-* **`logic`:** Módulo personalizado que debe contener `BayesLogic`, `shannon_entropy`, y `calculate_cosines`.
+* **`logic`:** Módulo personalizado contiene: `bayes_logic.py`, `shannon_entropy`, y `calculate_cosines`.
 
-### Clases y Funciones Principales (Con Mejoras)
+### Clases y Funciones Principales 
 
-* **`TimeSeries` Class (Corregida):**
-    * **Corrección:** La clase `TimeSeries` ahora solo se encarga de **representar y evaluar ondas sinusoidales**.  Se han eliminado los cálculos incorrectos y mal ubicados dentro de la clase.
+* **`TimeSeries` Class:**
+  La clase `TimeSeries` ahora solo se encarga de **representar y evaluar ondas sinusoidales**.
     * **Métodos:**
         * `__init__`:  Constructor.
         * `evaluate`: Evalúa la onda en puntos x.
@@ -356,19 +356,19 @@ Este script sigue siendo una **simulación y analogía clásica del colapso de l
 
 ### Cómo utilizar este módulo
 
-1.  **Asegúrate de tener `logic.py`:**  Verifica que el módulo `logic.py` (del código anterior) esté guardado en el mismo directorio o en un lugar accesible para Python.
+1.  **Asegúrate de tener `bayes_logic.py`:**  Verifica que el módulo `bayes_logic.py` (del código anterior) esté guardado en el mismo directorio o en un lugar accesible para Python.
 2.  **Instala Bibliotecas:** Asegúrate de tener instaladas las bibliotecas `matplotlib` y `numpy`:
     ```bash
     pip install matplotlib numpy
     ```
-3.  **Guarda el código:** Guarda el código de `improved_colapso_onda.py` en un archivo.
+3.  **Guarda el código:** Guarda el código de `improved_colapso_onda.py` en el módulo de circuits y configura el main interno.
 4.  **Ejecuta el script:** Ejecuta el script desde la línea de comandos:
     ```bash
     python improved_colapso_onda.py
     ```
 5.  **Observa la Visualización:**  El script generará visualizaciones gráficas en cada iteración, mostrando las ondas superpuestas y "colapsadas", junto con una representación del estado de la red neuronal.  La consola imprimirá información numérica para cada iteración.
 
-Este script mejorado proporciona una base más funcional para explorar la analogía del colapso de onda clásico y su potencial relación con conceptos de redes neuronales, aunque sigue siendo importante interpretar los resultados como una **simulación y analogía conceptual, no como una implementación de fenómenos cuánticos reales.**
+Este script proporciona una base funcional para explorar la analogía del colapso de onda clásico y su potencial relación con conceptos de redes neuronales, aunque sigue siendo importante interpretar los resultados como una **simulación y analogía conceptual, no como una implementación de fenómenos cuánticos reales. los mismos conceptos que se consideran reales, son probabilidades no se busca en ningún momento obtener o extraer un resultado estrictamente cuántico exacto.**
 
 *Creación y Manejo del Circuito Cuántico
 
@@ -519,11 +519,11 @@ if __name__ == "__main__":
     circuit = main()
 
  * Este bloque estándar de Python asegura que la función main() se ejecute solo cuando el script se ejecuta directamente (no cuando se importa como un módulo).
-Resumen
-Este módulo proporciona una implementación de un circuito cuántico diseñado para ser resistente a errores de medición.  Utiliza una combinación de puertas controladas, puertas Toffoli, rotaciones de fase y entrelazamiento para crear un estado cuántico robusto.  Los métodos de medición están diseñados para minimizar la pérdida de coherencia, permitiendo mediciones parciales o totales del sistema con un impacto reducido en el estado cuántico global
-*Definición del Modelo Híbrido
+Este módulo proporciona una implementación de un circuito cuántico diseñado para ser 'resistente' a errores de medición.  Utiliza una combinación de puertas controladas, puertas Toffoli, rotaciones de fase y entrelazamiento para crear un estado cuántico robusto.  Los métodos de medición están diseñados para minimizar la pérdida de coherencia, permitiendo mediciones parciales o totales del sistema con un impacto reducido en el estado cuántico global
 
-    Archivo: modelo_hibrido.py
+#Definición del Modelo Híbrido
+
+    **Archivo: modelo_hibrido.py
     Descripción: Implementa un modelo híbrido que combina componentes cuánticos y clásicos, integrando una red neuronal clásica con el circuito cuántico.
 
 ### Objeto Binario. 
