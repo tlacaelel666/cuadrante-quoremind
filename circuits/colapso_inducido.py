@@ -628,4 +628,21 @@ def main(seed: Optional[int] = None, save_path: str = "output/") -> None:
             # Gráfico de nodos activos
             plt.subplot(2, 2, 4)
             plt.plot([r["iteracion"] for r in resultados], [r["nodos_activos"] for r in resultados], 'r-o')
-            plt.title("Evol
+            plt.title("Evolución de Nodos Activos")
+            plt.xlabel("Iteración")
+            plt.ylabel("Número de Nodos Activos")
+            plt.grid(True)
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(save_path, "analisis_resultados.png"))
+            plt.show()
+    
+    except Exception as e:
+        logger.error(f"Error en la función main: {e}")
+        import traceback
+        traceback.print_exc()
+
+# Punto de entrada del script
+if __name__ == "__main__":
+    # Ejecutar la simulación con una semilla opcional
+    main(seed=42, save_path="output/")
