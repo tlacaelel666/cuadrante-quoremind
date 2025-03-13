@@ -95,3 +95,70 @@ def main():
 
 if __name__ == "__main__":
     circuit = main()
+
+# versión Qasm 
+
+// Circuito Cuántico Resistente en QASM
+// Equivalente al código Python proporcionado
+
+OPENQASM 2.0;
+include "qelib1.inc";
+
+// Definir registros cuánticos y clásicos (5 qubits)
+qreg q[5];
+creg c[5];
+
+// Implementación de create_resilient_state()
+
+// Primera columna: H controlada
+// En QASM, se implementa ch usando operaciones elementales
+h q[1];
+sdg q[1];
+cx q[0], q[1];
+s q[1];
+h q[1];
+
+// Segunda columna: Toffoli (ccx)
+ccx q[0], q[1], q[2];
+
+// Tercera columna: X en q0 y Toffoli
+x q[0];
+ccx q[2], q[3], q[4];
+
+// Cuarta columna: CCCX - Implementación con gates auxiliares
+// Usamos q[1] como ancilla temporalmente
+ccx q[0], q[1], q[1];  // Guardamos resultado en q[1]
+ccx q[1], q[2], q[3];  // Aplicamos el tercer control
+// Deshacer la primera Toffoli
+ccx q[0], q[1], q[1];
+
+// Añadir esferas de fase (RZ gates) para resistencia
+rz(pi/4) q[0];
+rz(pi/4) q[1];
+rz(pi/4) q[2];
+rz(pi/4) q[3];
+rz(pi/4) q[4];
+
+// Crear entrelazamiento adicional para resistencia
+cx q[0], q[1];
+cx q[1], q[2];
+cx q[2], q[3];
+cx q[3], q[4];
+
+barrier q;
+
+// Implementación de measure_qubit(2) como ejemplo
+// Aplicar transformación de protección antes de la medición
+h q[2];
+rz(pi/2) q[2];
+// Medición del qubit 2
+measure q[2] -> c[2];
+// Restaurar el estado (opcional)
+rz(-pi/2) q[2];
+h q[2];
+
+// Función measure_all() (comentada para no ejecutarla junto con measure_qubit)
+// barrier q;
+// h q[0]; h q[1]; h q[2]; h q[3]; h q[4];
+// rz(pi/2) q[0]; rz(pi/2) q[1]; rz(pi/2) q[2]; rz(pi/2) q[3]; rz(pi/2) q[4];
+// measure q -> c;
