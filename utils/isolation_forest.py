@@ -17,7 +17,6 @@ class Honeypot:
         """Exporta los logs de interacciones"""
         return self.interactions
 
-
 class SecuritySystem:
     def __init__(self, contamination=0.1, n_estimators=100, random_state=42):
         self.honeypots = {}  # Honeypots para atrapar actividades sospechosas
