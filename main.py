@@ -15,8 +15,9 @@ import matplotlib.pyplot as plt
 
 # Importar módulos específicos del proyecto
 import ibm_setup_conf
-import circuito_principal
-import modelo_hibrido
+import main_logic.py
+import quantum_main.py
+import bayes_logic
 
 def main():
     # 2. Configuración del Entorno Cuántico
