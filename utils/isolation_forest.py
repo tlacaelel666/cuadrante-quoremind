@@ -2,7 +2,6 @@ import joblib
 import numpy as np
 from sklearn.ensemble import IsolationForest
 
-
 class Honeypot:
     def __init__(self, name, threshold=0.5):
         self.name = name
