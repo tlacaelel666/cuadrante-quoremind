@@ -1,3 +1,15 @@
+"""
+──────────────────────────────────────────────
+Documentación del Script "QuantumState" y Simulación de Evolución
+
+Este script implementa la clase QuantumState, que simula un estado cuántico mediante una distribución de probabilidades. El estado se actualiza con base en una acción observada (por ejemplo, 0 o 1), lo que provoca un ajuste en la distribución mediante un mecanismo basado en la proximidad del valor observado. Además, se registran métricas de información (entropía e información ganada) y se provee una función para visualizar la evolución del estado a lo largo del tiempo.
+
+Autor: Jacobo Tlacaelel Mina Rodríguez  
+Fecha: 13/03/2025  
+Versión: cuadrante-coremind v1.0
+
+────────────────────────────────────────────
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Tuple, Optional
