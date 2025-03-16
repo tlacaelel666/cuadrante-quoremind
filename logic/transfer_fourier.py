@@ -257,10 +257,8 @@ def main():
 
 if __name__ == "__main__":
     main()
-“””
-------------------------------------------------------------
 
-──────────────────────────────────────────────
+"""
 Análisis y Documentación General
 
 Este script define tres clases principales:
@@ -286,8 +284,8 @@ La función **simulate_quantum_state** crea una instancia de QuantumState (el es
   - La distribución final de probabilidades.
 
 Finalmente, **main()** es el punto de entrada que invoca la simulación con parámetros de ejemplo.
-
-──────────────────────────────────────────────
+"""
+"""
 Conclusión
 
 Este script está bien estructurado para demostrar cómo integrar la transformada de Fourier y el análisis bayesiano en el procesamiento de estados cuánticos, y cómo extraer características (como magnitudes, fases, entropía y coherencia) que se pueden utilizar en aplicaciones de aprendizaje automático. La función fft_based_initializer ilustra cómo podrías usar estas características para inicializar una red neuronal de manera informada.
