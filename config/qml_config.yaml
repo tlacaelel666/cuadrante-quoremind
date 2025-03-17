@@ -1,0 +1,37 @@
+# Configuración de Quantum Machine Learning
+quantum_ml:
+  # Configuración de circuitos cuánticos
+  circuits:
+    max_qubits: 8
+    entanglement_type: 'full'
+    noise_model: 'depolarizing'
+
+  # Configuraciones de híbrido cuántico-clásico
+  hybrid_model:
+    quantum_layers: 3
+    classical_layers: 2
+    embedding_type: 'amplitude'
+
+  # Algoritmos de optimización
+  optimization:
+    method: 'qaoa'  # Quantum Approximate Optimization Algorithm
+    classical_optimizer: 'adam'
+    learning_rate: 0.01
+    max_iterations: 100
+
+  # Métricas y evaluación
+  metrics:
+    fidelity_threshold: 0.9
+    entanglement_measure: 'concurrence'
+
+  # Configuración de backends
+  backends:
+    preferred:
+      - 'qasm_simulator'
+      - 'statevector_simulator'
+    hardware_enabled: false
+
+  # Logging
+  logging:
+    level: DEBUG
+    file: 'quantum_ml.log'
