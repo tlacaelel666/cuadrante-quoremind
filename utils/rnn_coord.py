@@ -4,7 +4,7 @@ import numpy as np
 import random
 import tensorflow as tf
 from typing import Dict, Any, List, Tuple
-# Asegúrate de que estos módulos estén en tu PYTHONPATH o en el mismo directorio
+# Asegúrate de tener estos módulos en su respectivo directorio 
 from quantum_bayes_mahalanobis import QuantumBayesMahalanobis
 from bayes_logic import StatisticalAnalysis
 from tensorflow.keras.models import Sequential
@@ -13,7 +13,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.linear_model import LinearRegression, Ridge
 import logging
 
-# Configuración de logging (puedes usar la misma configuración que en el primer código o adaptarla)
+# Configuración de logging.
 logger = logging.getLogger(__name__)
 
 # Clase QuantumState
