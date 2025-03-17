@@ -1,9 +1,7 @@
-# aplicacion_cuantica.py
+# main_quantum_circuits.py
 
 #!/usr/bin/env python3
 """
-aplicacion_cuantica.py
-
 Sistema Cuántico Híbrido: Interfaz gráfica que integra componentes cuánticos
 (a través de circuitos resistentes y medidas simuladas) y módulos clásicos de AA
 (ej. redes neuronales y entornos simulados). Este script sirve como punto de
@@ -12,6 +10,7 @@ objetos binarios y agentes (Q-learning/Actor-Critic).
 
 Autor: Jacobo Mina 
 Fecha: 2025
+cuadrante-coremind v1.0
 """
 
 import tkinter as tk
