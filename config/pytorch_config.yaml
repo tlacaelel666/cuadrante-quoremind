@@ -1,0 +1,42 @@
+# Configuración de PyTorch
+pytorch:
+  # Configuración de dispositivo
+  device:
+    default: 'cuda'  # 'cpu', 'cuda', 'mps' (Mac)
+    cudnn:
+      benchmark: true
+      deterministic: false
+
+  # Precisión y tipos de datos
+  precision:
+    default_dtype: float32
+    enable_amp: true  # Automatic Mixed Precision
+    
+  # Configuraciones de entrenamiento
+  training:
+    default_optimizer: 'adam'
+    learning_rate: 0.001
+    weight_decay: 1e-5
+    gradient_clip_norm: 1.0
+
+  # Configuración de distributed training
+  distributed:
+    enabled: false
+    backend: 'nccl'  # Para GPUs NVIDIA
+    port: 29500
+
+  # Semilla para reproducibilidad
+  random_seed: 42
+
+  # Logging y monitoreo
+  logging:
+    level: INFO
+    file: 'pytorch.log'
+    wandb:
+      enabled: false
+      project: 'ml_experiments'
+
+  # Gestión de memoria
+  memory:
+    cache_strategy: 'eager'
+    pin_memory: true
