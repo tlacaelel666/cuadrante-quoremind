@@ -1,0 +1,39 @@
+# Configuración de TensorFlow
+tensorflow:
+  # Configuración de GPU
+  gpu:
+    allow_growth: true
+    visible_devices: [0]  # Dispositivos GPU visibles
+    memory_limit: 4096  # MB
+
+  # Precisión de cálculo
+  precision:
+    default_dtype: float32
+    enable_mixed_precision: true
+
+  # Configuración de ejecución
+  execution:
+    eager_mode: false
+    graph_optimization: true
+    xla_optimization: true
+
+  # Configuraciones de entrenamiento
+  training:
+    default_optimizer: 'adam'
+    learning_rate: 0.001
+    gradient_clip_norm: 1.0
+
+  # Logging y depuración
+  logging:
+    level: INFO
+    file: 'tensorflow.log'
+    tensorboard:
+      enabled: true
+      log_dir: './logs'
+
+  # Semilla para reproducibilidad
+  random_seed: 42
+
+  # Configuraciones de distribución
+  distribution:
+    strategy: 'mirrored'  # Para múltiples GPUs
