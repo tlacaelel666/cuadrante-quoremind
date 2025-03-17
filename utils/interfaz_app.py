@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                             QFileDialog, QGroupBox, QGridLayout, QMessageBox,
                             QSplitter, QTextEdit)
 from PyQt5.QtCore import Qt, pyqtSlot, QTimer
+import json  # Importa la biblioteca json
 
 # Importamos nuestro integrador
 from integration_with_interface import AgentInterfaceIntegrator
@@ -23,7 +24,19 @@ logger = logging.getLogger(__name__)
 
 
 class MatplotlibCanvas(FigureCanvas):
-    """Canvas de Matplotlib para gráficos en Qt"""
+    """
+    Canvas de Matplotlib para gráficos en Qt.
+
+    Esta clase proporciona un widget para incrustar gráficos de Matplotlib en una
+    aplicación PyQt5. Permite mostrar gráficos de amplitudes y probabilidades del
+    estado cuántico.
+
+    Args:
+        parent (QWidget, optional): Widget padre. Defaults to None.
+        width (int, optional): Ancho de la figura en pulgadas. Defaults to 5.
+        height (int, optional): Altura de la figura en pulgadas. Defaults to 4.
+        dpi (int, optional): Dots per inch (resolución). Defaults to 100.
+    """
     
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
@@ -37,7 +50,89 @@ class MatplotlibCanvas(FigureCanvas):
 
 class QuantumAgentInterface(QMainWindow):
     """
-    Interfaz gráfica principal para interactuar con el AgentInterfaceIntegrator
+    Interfaz gráfica principal para interactuar con el AgentInterfaceIntegrator.
+
+    Esta clase define la ventana principal de la interfaz gráfica, que permite a los
+    usuarios configurar y controlar un agente cuántico, simular circuitos cuánticos,
+    y realizar análisis estadísticos y bayesianos.
+
+    Atributos:
+        integrator (AgentInterfaceIntegrator): Instancia del integrador de backend-frontend.
+        tabs (QTabWidget): Widget de pestañas para organizar la interfaz.
+        agent_name_input (QLineEdit): Campo de texto para el nombre del agente.
+        num_qubits_spin (QSpinBox): Selector numérico para el número de qubits.
+        learning_rate_spin (QDoubleSpinBox): Selector numérico para la tasa de aprendizaje.
+        input_size_spin (QSpinBox): Selector numérico para el tamaño de entrada.
+        hidden_size_spin (QSpinBox): Selector numérico para el tamaño oculto.
+        rnn_type_combo (QComboBox): Lista desplegable para el tipo de RNN.
+        dropout_rate_spin (QDoubleSpinBox): Selector numérico para la tasa de dropout.
+        batch_norm_check (QCheckBox): Checkbox para activar/desactivar la normalización por lotes.
+        lr_decay_spin (QDoubleSpinBox): Selector numérico para el decaimiento adaptativo de la tasa de aprendizaje.
+        init_agent_btn (QPushButton): Botón para inicializar el agente.
+        load_config_btn (QPushButton): Botón para cargar la configuración.
+        save_config_btn (QPushButton): Botón para guardar la configuración.
+        circuit_qubits_spin (QSpinBox): Selector numérico para el número de qubits del circuito.
+        init_circuit_btn (QPushButton): Botón para inicializar el circuito.
+        gate_combo (QComboBox): Lista desplegable para seleccionar la compuerta cuántica.
+        qubit_input (QLineEdit): Campo de texto para especificar el/los qubit(s) al que se aplica la compuerta.
+        gate_param_spin (QDoubleSpinBox): Selector numérico para el parámetro de la compuerta.
+        apply_gate_btn (QPushButton): Botón para aplicar la compuerta.
+        measure_qubit_btn (QPushButton): Botón para medir un qubit específico.
+        measure_all_btn (QPushButton): Botón para medir todos los qubits.
+        amplitude_canvas (MatplotlibCanvas): Canvas para mostrar el gráfico de amplitudes.
+        probability_canvas (MatplotlibCanvas): Canvas para mostrar el gráfico de probabilidades.
+        data_file_input (QLineEdit): Campo de texto para la ruta del archivo de datos de simulación.
+        load_data_btn (QPushButton): Botón para cargar los datos de simulación.
+        seq_length_spin (QSpinBox): Selector numérico para la longitud de la secuencia.
+        num_iterations_spin (QSpinBox): Selector numérico para el número de iteraciones.
+        training_epochs_spin (QSpinBox): Selector numérico para las épocas de entrenamiento.
+        batch_size_spin (QSpinBox): Selector numérico para el tamaño del lote.
+        run_simulation_btn (QPushButton): Botón para ejecutar la simulación.
+        results_label (QLabel): Etiqueta para mostrar los resultados de la simulación.
+        stats_data_input (QLineEdit): Campo de texto para los datos del análisis estadístico.
+        load_stats_data_btn (QPushButton): Botón para cargar los datos del análisis estadístico.
+        mahalanobis_point_input (QLineEdit): Campo de texto para el punto de Mahalanobis.
+        analyze_stats_btn (QPushButton): Botón para realizar el análisis estadístico.
+        covariance_table (QTableWidget): Tabla para mostrar la matriz de covarianza.
+        mahalanobis_result_label (QLabel): Etiqueta para mostrar el resultado de la distancia de Mahalanobis.
+        entropy_input (QDoubleSpinBox): Selector numérico para la entropía.
+        coherence_input (QDoubleSpinBox): Selector numérico para la coherencia.
+        prn_influence_input (QDoubleSpinBox): Selector numérico para la influencia PRN.
+        bayes_action_combo (QComboBox): Lista desplegable para la acción bayesiana.
+        calculate_bayes_btn (QPushButton): Botón para calcular las métricas bayesianas.
+        bayes_results_table (QTableWidget): Tabla para mostrar los resultados del análisis bayesiano.
+        log_text (QTextEdit): Área de texto para mostrar los mensajes de registro (log).
+        load_agent_btn (QPushButton): Botón para cargar un agente previamente guardado.
+        save_agent_btn (QPushButton): Botón para guardar el agente actual.
+        update_timer (QTimer): Timer para actualizar las mediciones cuánticas de forma periódica.
+
+    Métodos:
+        _create_ui(): Crea y configura la interfaz de usuario.
+        _create_configuration_tab(): Crea la pestaña de configuración del agente.
+        _create_quantum_circuit_tab(): Crea la pestaña del circuito cuántico.
+        _create_simulation_tab(): Crea la pestaña de simulación.
+        _create_analysis_tab(): Crea la pestaña de análisis estadístico y bayesiano.
+        _create_log_area(parent_layout): Crea el área de registro (log) de la interfaz.
+        _create_action_buttons(parent_layout): Crea botones de acción globales como 'Cargar/Guardar Agente'.
+        _load_default_settings(): Carga la configuración por defecto en la interfaz.
+        initialize_agent(): Inicializa el agente con la configuración de la interfaz.
+        load_configuration(): Carga una configuración desde un archivo.
+        save_configuration(): Guarda la configuración actual en un archivo.
+        initialize_quantum_circuit(): Inicializa el circuito cuántico con el número de qubits especificado.
+        apply_quantum_gate(): Aplica una compuerta cuántica al circuito.
+        measure_specific_qubit(): Mide un qubit específico del circuito.
+        measure_all_qubits(): Mide todos los qubits del circuito.
+        update_quantum_displays(): Actualiza los gráficos de amplitudes y probabilidades.
+        load_simulation_data(): Carga los datos para la simulación.
+        run_simulation(): Ejecuta la simulación con los parámetros especificados.
+        load_statistical_data(): Carga los datos para el análisis estadístico.
+        perform_statistical_analysis(): Realiza el análisis estadístico y muestra los resultados.
+        calculate_bayesian_metrics(): Calcula las métricas bayesianas y muestra los resultados.
+        load_agent(): Carga un agente previamente guardado.
+        save_agent(): Guarda el agente actual.
+        log_message(message): Agrega un mensaje al área de registro (log).
+        show_error_message(message): Muestra un mensaje de error en una ventana emergente.
+
     """
     
     def __init__(self):
@@ -610,4 +705,177 @@ class QuantumAgentInterface(QMainWindow):
         """Actualiza los gráficos de amplitudes y probabilidades"""
         try:
             if self.integrator.resilient_circuit is not None:
-                # Obtener
+                # Obtener amplitudes y probabilidades del integrador
+                amplitudes = self.integrator.get_amplitudes()
+                probabilities = self.integrator.get_probabilities()
+                
+                # Actualizar el gráfico de amplitudes
+                self.amplitude_canvas.axes.clear()
+                self.amplitude_canvas.axes.bar(range(len(amplitudes)), np.abs(amplitudes)**2)  # Magnitud al cuadrado
+                self.amplitude_canvas.axes.set_title('Amplitudes')
+                self.amplitude_canvas.axes.set_xlabel('Estado Base')
+                self.amplitude_canvas.axes.set_ylabel('Amplitud')
+                self.amplitude_canvas.fig.tight_layout()
+                self.amplitude_canvas.draw()
+                
+                # Actualizar el gráfico de probabilidades
+                self.probability_canvas.axes.clear()
+                self.probability_canvas.axes.bar(range(len(probabilities)), probabilities)
+                self.probability_canvas.axes.set_title('Probabilidades')
+                self.probability_canvas.axes.set_xlabel('Estado Base')
+                self.probability_canvas.axes.set_ylabel('Probabilidad')
+                self.probability_canvas.fig.tight_layout()
+                self.probability_canvas.draw()
+
+        except Exception as e:
+            self.show_error_message(f"Error al actualizar visualizaciones: {e}")
+            logger.exception("Error al actualizar las visualizaciones")
+
+    @pyqtSlot()
+    def load_simulation_data(self):
+        """Carga los datos para la simulación"""
+        filepath, _ = QFileDialog.getOpenFileName(self, "Cargar Datos de Simulación", "", "CSV Files (*.csv);;Text Files (*.txt)")
+        if filepath:
+            try:
+                self.integrator.load_data(filepath)  # Asumiendo que el integrador tiene un método load_data
+                self.data_file_input.setText(filepath)
+                self.log_message(f"Datos cargados desde {filepath}")
+            except Exception as e:
+                self.show_error_message(f"Error al cargar los datos: {e}")
+                logger.exception("Error al cargar los datos de simulación")
+
+    @pyqtSlot()
+    def run_simulation(self):
+        """Ejecuta la simulación con los parámetros especificados"""
+        try:
+            data_path = self.data_file_input.text()
+            sequence_length = self.seq_length_spin.value()
+            num_iterations = self.num_iterations_spin.value()
+            training_epochs = self.training_epochs_spin.value()
+            batch_size = self.batch_size_spin.value()
+
+            # Llamar al integrador para ejecutar la simulación
+            results = self.integrator.run_simulation(
+                data_path=data_path,
+                sequence_length=sequence_length,
+                num_iterations=num_iterations,
+                training_epochs=training_epochs,
+                batch_size=batch_size
+            )
+
+            # Mostrar los resultados en la interfaz
+            self.results_label.setText(str(results))  # Simplificado: mostrar como string
+            self.log_message("Simulación completada.")
+
+        except Exception as e:
+            self.show_error_message(f"Error al ejecutar la simulación: {e}")
+            logger.exception("Error durante la ejecución de la simulación")
+            
+    @pyqtSlot()
+    def load_statistical_data(self):
+        """Carga los datos para el análisis estadístico."""
+        filepath, _ = QFileDialog.getOpenFileName(self, "Cargar Datos Estadísticos", "", "CSV Files (*.csv)")
+        if filepath:
+            try:
+                self.integrator.load_statistical_data(filepath)
+                self.stats_data_input.setText(filepath)
+                self.log_message(f"Datos estadísticos cargados desde {filepath}.")
+            except Exception as e:
+                self.show_error_message(f"Error al cargar los datos estadísticos: {e}")
+                logger.exception("Error al cargar los datos estadísticos.")
+
+    @pyqtSlot()
+    def perform_statistical_analysis(self):
+        """Realiza el análisis estadístico y muestra los resultados."""
+        try:
+            mahalanobis_point_str = self.mahalanobis_point_input.text()
+            mahalanobis_point = [float(x.strip()) for x in mahalanobis_point_str.split(',')]
+
+            covariance_matrix, mahalanobis_distance = self.integrator.perform_statistical_analysis(mahalanobis_point)
+
+            # Mostrar la matriz de covarianza en la tabla
+            num_rows = len(covariance_matrix)
+            self.covariance_table.setRowCount(num_rows)
+            self.covariance_table.setColumnCount(num_rows)
+            for i in range(num_rows):
+                for j in range(num_rows):
+                    item = QTableWidgetItem(str(covariance_matrix[i][j]))
+                    self.covariance_table.setItem(i, j, item)
+
+            # Mostrar la distancia de Mahalanobis
+            self.mahalanobis_result_label.setText(str(mahalanobis_distance))
+            self.log_message("Análisis estadístico completado.")
+
+        except Exception as e:
+            self.show_error_message(f"Error durante el análisis estadístico: {e}")
+            logger.exception("Error durante el análisis estadístico.")
+
+    @pyqtSlot()
+    def calculate_bayesian_metrics(self):
+        """Calcula las métricas bayesianas y muestra los resultados."""
+        try:
+            entropy = self.entropy_input.value()
+            coherence = self.coherence_input.value()
+            prn_influence = self.prn_influence_input.value()
+            action = int(self.bayes_action_combo.currentText())  # Convertir la acción a entero
+
+            results = self.integrator.calculate_bayesian_metrics(entropy, coherence, prn_influence, action)
+
+            # Mostrar los resultados en la tabla
+            self.bayes_results_table.setRowCount(len(results))
+            for i, (metric, value) in enumerate(results.items()):
+                metric_item = QTableWidgetItem(metric)
+                value_item = QTableWidgetItem(str(value))
+                self.bayes_results_table.setItem(i, 0, metric_item)
+                self.bayes_results_table.setItem(i, 1, value_item)
+
+            self.log_message("Cálculo de métricas bayesianas completado.")
+
+        except Exception as e:
+            self.show_error_message(f"Error al calcular métricas bayesianas: {e}")
+            logger.exception("Error al calcular métricas bayesianas.")
+
+    @pyqtSlot()
+    def load_agent(self):
+        """Carga un agente previamente guardado."""
+        filepath, _ = QFileDialog.getOpenFileName(self, "Cargar Agente", "", "Agent Files (*.agent)")  # Define la extensión .agent
+        if filepath:
+            try:
+                self.integrator.load_agent(filepath)
+                self.log_message(f"Agente cargado desde {filepath}")
+            except Exception as e:
+                self.show_error_message(f"Error al cargar el agente: {e}")
+                logger.exception("Error al cargar el agente.")
+
+    @pyqtSlot()
+    def save_agent(self):
+        """Guarda el agente actual."""
+        filepath, _ = QFileDialog.getSaveFileName(self, "Guardar Agente", "", "Agent Files (*.agent)")  # Define la extensión .agent
+        if filepath:
+            try:
+                self.integrator.save_agent(filepath)
+                self.log_message(f"Agente guardado en {filepath}")
+            except Exception as e:
+                self.show_error_message(f"Error al guardar el agente: {e}")
+                logger.exception("Error al guardar el agente.")
+
+    def log_message(self, message):
+        """Agrega un mensaje al área de registro (log)."""
+        self.log_text.append(message)
+        self.log_text.ensureCursorVisible()  # Asegura que la última línea sea visible
+
+    def show_error_message(self, message):
+        """Muestra un mensaje de error en una ventana emergente."""
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setText("Error")
+        msg.setInformativeText(message)
+        msg.setWindowTitle("Error")
+        msg.exec_()
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = QuantumAgentInterface()
+    window.show()
+    sys.exit(app.exec_())
