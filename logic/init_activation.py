@@ -445,3 +445,25 @@ def deserialize_state(cls, serialized_data: dict) -> 'QuantumState':
     quantum_state.probabilities = np.array(serialized_data['probabilities'])
     
     return quantum_state
+# Ejemplo de uso: Crear dos estados cuánticos.
+state1 = QuantumState(num_positions=5)
+state2 = QuantumState(num_positions=5)
+
+# Actualizar estados
+state1.update_state(action=1)
+state2.update_state(action=0)
+
+# Calcular interferencia
+interference_state = state1.quantum_interference(state2)
+
+# Medir entrelazamiento
+entanglement = state1.quantum_entanglement_measure(state2)
+
+# Visualizar estado
+state_info = state1.visualize_state()
+print("Estado cuántico:", state_info)
+print("Entrelazamiento:", entanglement)
+
+# Serializar y deserializar
+serialized = state1.serialize_state()
+reconstructed_state = QuantumState.deserialize_state(serialized)
