@@ -1,0 +1,39 @@
+# Configuración de Qiskit Runtime
+qiskit_runtime:
+  # Configuración de credenciales
+  credentials:
+    token: null  # Reemplazar con token de IBM Quantum
+    hub: null
+    group: null
+    project: null
+
+  # Configuraciones de ejecución
+  runtime:
+    default_backend: 'ibmq_qasm_simulator'
+    max_execution_time: 3600  # segundos
+    shots: 1024
+    optimization_level: 1
+
+  # Configuración de simulación
+  simulation:
+    noise_model: false
+    seed_simulator: 42
+
+  # Preferencias de circuito
+  circuit:
+    max_qubits: 5
+    basis_gates: 
+      - u1
+      - u2
+      - u3
+      - cx
+
+  # Logging y monitoreo
+  logging:
+    level: INFO
+    file: 'qiskit_runtime.log'
+
+  # Configuraciones de error y tolerancia
+  error_mitigation:
+    measurement_error_mitigation: true
+    readout_error_mitigation: true
