@@ -1,4 +1,3 @@
-
 # fourier_transformed.py
 
 #!/usr/bin/env python3
