@@ -1,6 +1,3 @@
-"""
-A continuación se presenta una versión refinada del código, con mejoras en la documentación (en español), manejos de excepción más claros, y comentarios adicionales para facilitar su mantenimiento y extensión.
-"""
 # quantum_bayes_mahalanobis.py
 
 import numpy as np
