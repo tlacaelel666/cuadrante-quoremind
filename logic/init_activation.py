@@ -1,6 +1,8 @@
 """
 Módulo Híbrido de Integración Neuronal Cuántico-Clásico
 
+# init_activation.py
+
 Este módulo define un sistema completo que integra:
   • Una red neural clásica (NeuralNetwork) con múltiples funciones de activación y 
     soporte para optimizadores (SGD y Adam).
@@ -23,24 +25,12 @@ from qiskit.circuit import Parameter
 from typing import Tuple, List, Optional
 from enum import Enum
 import joblib
-
-# quantum_bayes_mahalanobis.py
-
-import numpy as np
-import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.spatial.distance import mahalanobis
 from sklearn.covariance import EmpiricalCovariance
+from bayes_logic import BayesLogic
 
-# Ajusta el import a tus necesidades reales:
-# Se asume que en bayes_logic.py se tienen las clases BayesLogic, PRN, además de las
-# funciones shannon_entropy, calculate_cosines, etc.
-from bayes_logic import (
-    BayesLogic,
-    PRN,
-    shannon_entropy,
-    calculate_cosines  
-)
+
 
 class QuantumBayesMahalanobis(BayesLogic):
     """
