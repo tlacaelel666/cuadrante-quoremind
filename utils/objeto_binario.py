@@ -327,6 +327,81 @@ class A2CAgent:
         self.action_dim = action_dim
         self.state_dim = state_dim
 
-
     def seleccionar_accion(self, state):
-        state_tensor = torch.tensor([state], dtype=torch.float32
+        state_tensor = torch.tensor([state], dtype=torch.float32)
+        policy, value = self.actor_critic(state_tensor)
+        action_probs = F.softmax(policy, dim=-1)
+        dist = Categorical(action_probs)
+        action = dist.sample()
+        
+        # Guardar log_prob y value para el entrenamiento
+        self.log_probs.append(dist.log_prob(action))
+        self.values.append(value)
+        
+        return action.item()
+    
+    def guardar_recompensa(self, reward):
+        self.rewards.append(reward)
+    
+    def calcular_returns(self, next_value=0):
+        returns = []
+        R = next_value
+        
+        for reward in reversed(self.rewards):
+            R = reward + self.gamma * R
+            returns.insert(0, R)
+            
+        return returns
+    
+    def update(self, next_state=None):
+        if len(self.rewards) == 0:
+            return
+            
+        # Calcular valor del próximo estado si existe
+        next_value = 0
+        if next_state is not None:
+            next_state_tensor = torch.tensor([next_state], dtype=torch.float32)
+            _, next_value = self.actor_critic(next_state_tensor)
+            next_value = next_value.detach().item()
+            
+        # Calcular retornos
+        returns = self.calcular_returns(next_value)
+        returns = torch.tensor(returns, dtype=torch.float32)
+        
+        # Convertir listas a tensores
+        log_probs = torch.stack(self.log_probs)
+        values = torch.cat(self.values)
+        
+        # Calcular ventajas
+        advantages = returns - values.detach()
+        
+        # Calcular pérdidas
+        actor_loss = -(log_probs * advantages).mean()
+        critic_loss = F.mse_loss(values, returns)
+        
+        # Pérdida total con balance entre actor y crítico
+        loss = actor_loss + 0.5 * critic_loss
+        
+        # Optimización
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        
+        # Limpiar memoria
+        self.log_probs = []
+        self.values = []
+        self.rewards = []
+        
+        return loss.item()
+    
+    def guardar_modelo(self, ruta):
+        torch.save(self.actor_critic.state_dict(), ruta)
+    
+    def cargar_modelo(self, ruta):
+        self.actor_critic.load_state_dict(torch.load(ruta))
+        self.actor_critic.eval()
+    
+    def reset(self):
+        self.log_probs = []
+        self.values = []
+        self.rewards = []
