@@ -405,3 +405,447 @@ class A2CAgent:
         self.log_probs = []
         self.values = []
         self.rewards = []
+
+# Clase Categorical para A2CAgent
+class Categorical:
+    def __init__(self, probs):
+        self.probs = probs
+
+    def sample(self):
+        return torch.multinomial(self.probs, 1).squeeze()
+
+    def log_prob(self, action):
+        return torch.log(self.probs.squeeze()[action])
+
+# Clase principal de la aplicación
+class QuantumAgentApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Quantum Agent Simulator")
+        self.root.geometry("1200x800")
+        
+        # Variables de control
+        self.entorno = None
+        self.agente = None
+        self.agente_tipo = tk.StringVar(value="Q-Learning")
+        self.entrenamiento_activo = False
+        self.objetos = []
+        self.historial_recompensas = []
+        self.historial_perdidas = []
+        self.historial_epsilon = []
+        self.ultimo_episodio = 0
+        
+        # Configurar estructura de la interfaz
+        self.crear_estructura_ui()
+        
+        # Inicializar objetos por defecto
+        self.crear_objetos_predeterminados()
+        
+        # Actualizar la información de estado
+        self.actualizar_info_estado()
+
+    def crear_estructura_ui(self):
+        # Panel principal
+        panel_principal = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
+        panel_principal.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Panel izquierdo (controles)
+        panel_izquierdo = ttk.Frame(panel_principal)
+        panel_principal.add(panel_izquierdo, weight=30)
+        
+        # Panel derecho (visualización)
+        panel_derecho = ttk.Frame(panel_principal)
+        panel_principal.add(panel_derecho, weight=70)
+        
+        # Configuración de los paneles
+        self.configurar_panel_izquierdo(panel_izquierdo)
+        self.configurar_panel_derecho(panel_derecho)
+
+    def configurar_panel_izquierdo(self, panel):
+        # Frame para la información del entorno
+        frame_entorno = ttk.LabelFrame(panel, text="Entorno")
+        frame_entorno.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Información de estado actual
+        ttk.Label(frame_entorno, text="Estado actual:").pack(anchor=tk.W, padx=5, pady=2)
+        self.lbl_estado_actual = ttk.Label(frame_entorno, text="No iniciado")
+        self.lbl_estado_actual.pack(anchor=tk.W, padx=5, pady=2)
+        
+        # Lista de objetos
+        ttk.Label(frame_entorno, text="Objetos:").pack(anchor=tk.W, padx=5, pady=2)
+        
+        frame_objetos = ttk.Frame(frame_entorno)
+        frame_objetos.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        scrollbar = ttk.Scrollbar(frame_objetos)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.tree_objetos = ttk.Treeview(frame_objetos, columns=("Nombre", "Categorías"), show="headings")
+        self.tree_objetos.heading("Nombre", text="Nombre")
+        self.tree_objetos.heading("Categorías", text="Categorías")
+        self.tree_objetos.column("Nombre", width=100)
+        self.tree_objetos.column("Categorías", width=150)
+        self.tree_objetos.pack(fill=tk.BOTH, expand=True)
+        
+        scrollbar.config(command=self.tree_objetos.yview)
+        self.tree_objetos.config(yscrollcommand=scrollbar.set)
+        
+        # Botones para gestionar objetos
+        frame_botones_objetos = ttk.Frame(frame_entorno)
+        frame_botones_objetos.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Button(frame_botones_objetos, text="Añadir", command=self.mostrar_dialogo_nuevo_objeto).pack(side=tk.LEFT, padx=2)
+        ttk.Button(frame_botones_objetos, text="Editar", command=self.editar_objeto_seleccionado).pack(side=tk.LEFT, padx=2)
+        ttk.Button(frame_botones_objetos, text="Eliminar", command=self.eliminar_objeto_seleccionado).pack(side=tk.LEFT, padx=2)
+        
+        # Frame para configuración del agente
+        frame_agente = ttk.LabelFrame(panel, text="Configuración del Agente")
+        frame_agente.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Tipo de agente
+        ttk.Label(frame_agente, text="Tipo de Agente:").pack(anchor=tk.W, padx=5, pady=2)
+        ttk.Radiobutton(frame_agente, text="Q-Learning", variable=self.agente_tipo, value="Q-Learning").pack(anchor=tk.W, padx=20, pady=2)
+        ttk.Radiobutton(frame_agente, text="Actor-Crítico (A2C)", variable=self.agente_tipo, value="A2C").pack(anchor=tk.W, padx=20, pady=2)
+        
+        # Parámetros de entrenamiento
+        ttk.Label(frame_agente, text="Hiperparámetros:").pack(anchor=tk.W, padx=5, pady=2)
+        
+        frame_params = ttk.Frame(frame_agente)
+        frame_params.pack(fill=tk.X, padx=5, pady=2)
+        
+        # Learning rate
+        ttk.Label(frame_params, text="Learning Rate:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        self.entry_lr = ttk.Entry(frame_params, width=10)
+        self.entry_lr.insert(0, "0.001")
+        self.entry_lr.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
+        
+        # Gamma
+        ttk.Label(frame_params, text="Gamma:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
+        self.entry_gamma = ttk.Entry(frame_params, width=10)
+        self.entry_gamma.insert(0, "0.99")
+        self.entry_gamma.grid(row=1, column=1, sticky=tk.W, padx=5, pady=2)
+        
+        # Epsilon (para Q-Learning)
+        ttk.Label(frame_params, text="Epsilon inicial:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
+        self.entry_epsilon = ttk.Entry(frame_params, width=10)
+        self.entry_epsilon.insert(0, "0.99")
+        self.entry_epsilon.grid(row=2, column=1, sticky=tk.W, padx=5, pady=2)
+        
+        # Epsilon decay
+        ttk.Label(frame_params, text="Epsilon decay:").grid(row=3, column=0, sticky=tk.W, padx=5, pady=2)
+        self.entry_epsilon_decay = ttk.Entry(frame_params, width=10)
+        self.entry_epsilon_decay.insert(0, "0.995")
+        self.entry_epsilon_decay.grid(row=3, column=1, sticky=tk.W, padx=5, pady=2)
+        
+        # Arquitectura de red
+        ttk.Label(frame_agente, text="Arquitectura de Red:").pack(anchor=tk.W, padx=5, pady=2)
+        
+        frame_red = ttk.Frame(frame_agente)
+        frame_red.pack(fill=tk.X, padx=5, pady=2)
+        
+        ttk.Label(frame_red, text="Capas ocultas (separadas por comas):").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        self.entry_hidden_layers = ttk.Entry(frame_red, width=15)
+        self.entry_hidden_layers.insert(0, "128, 64")
+        self.entry_hidden_layers.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
+        
+        # Botones de entrenamiento
+        frame_botones_entrenamiento = ttk.Frame(frame_agente)
+        frame_botones_entrenamiento.pack(fill=tk.X, padx=5, pady=5)
+        
+        self.btn_iniciar = ttk.Button(frame_botones_entrenamiento, text="Iniciar Entrenamiento", command=self.iniciar_entrenamiento)
+        self.btn_iniciar.pack(side=tk.LEFT, padx=2)
+        
+        self.btn_detener = ttk.Button(frame_botones_entrenamiento, text="Detener", command=self.detener_entrenamiento, state=tk.DISABLED)
+        self.btn_detener.pack(side=tk.LEFT, padx=2)
+        
+        ttk.Button(frame_botones_entrenamiento, text="Reiniciar", command=self.reiniciar_entorno).pack(side=tk.LEFT, padx=2)
+        
+        # Frame para acciones manuales
+        frame_acciones = ttk.LabelFrame(panel, text="Acciones Manuales")
+        frame_acciones.pack(fill=tk.X, padx=5, pady=5)
+        
+        # Botones de acciones
+        frame_botones_acciones = ttk.Frame(frame_acciones)
+        frame_botones_acciones.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Button(frame_botones_acciones, text="◀", command=lambda: self.ejecutar_accion_manual(1)).pack(side=tk.LEFT, padx=2)
+        ttk.Button(frame_botones_acciones, text="▶", command=lambda: self.ejecutar_accion_manual(0)).pack(side=tk.LEFT, padx=2)
+        ttk.Button(frame_botones_acciones, text="▲", command=lambda: self.ejecutar_accion_manual(2)).pack(side=tk.LEFT, padx=2)
+        ttk.Button(frame_botones_acciones, text="▼", command=lambda: self.ejecutar_accion_manual(3)).pack(side=tk.LEFT, padx=2)
+        
+        # Botones para guardar/cargar
+        frame_guardar_cargar = ttk.Frame(panel)
+        frame_guardar_cargar.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Button(frame_guardar_cargar, text="Guardar Modelo", command=self.guardar_modelo).pack(side=tk.LEFT, padx=2)
+        ttk.Button(frame_guardar_cargar, text="Cargar Modelo", command=self.cargar_modelo).pack(side=tk.LEFT, padx=2)
+        ttk.Button(frame_guardar_cargar, text="Exportar Entorno", command=self.exportar_entorno).pack(side=tk.LEFT, padx=2)
+        ttk.Button(frame_guardar_cargar, text="Importar Entorno", command=self.importar_entorno).pack(side=tk.LEFT, padx=2)
+
+    def configurar_panel_derecho(self, panel):
+        # Notebook para pestañas
+        notebook = ttk.Notebook(panel)
+        notebook.pack(fill=tk.BOTH, expand=True)
+        
+        # Pestaña de visualización de entrenamiento
+        tab_entrenamiento = ttk.Frame(notebook)
+        notebook.add(tab_entrenamiento, text="Entrenamiento")
+        
+        # Frame para gráficos
+        frame_graficos = ttk.Frame(tab_entrenamiento)
+        frame_graficos.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Crear figura para gráficos
+        self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, 1, figsize=(8, 10), sharex=True)
+        self.fig.tight_layout(pad=3.0)
+        
+        # Gráfico de recompensas
+        self.ax1.set_title("Recompensa por Episodio")
+        self.ax1.set_ylabel("Recompensa")
+        self.line_reward, = self.ax1.plot([], [], 'b-')
+        
+        # Gráfico de pérdidas
+        self.ax2.set_title("Pérdida por Episodio")
+        self.ax2.set_ylabel("Pérdida")
+        self.line_loss, = self.ax2.plot([], [], 'r-')
+        
+        # Gráfico de epsilon (para Q-Learning)
+        self.ax3.set_title("Epsilon por Episodio")
+        self.ax3.set_xlabel("Episodio")
+        self.ax3.set_ylabel("Epsilon")
+        self.line_epsilon, = self.ax3.plot([], [], 'g-')
+        
+        # Crear canvas para mostrar los gráficos
+        self.canvas = FigureCanvasTkAgg(self.fig, master=frame_graficos)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        
+        # Pestaña de log
+        tab_log = ttk.Frame(notebook)
+        notebook.add(tab_log, text="Log")
+        
+        # Área de texto para mostrar logs
+        self.txt_log = scrolledtext.ScrolledText(tab_log)
+        self.txt_log.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Configurar handler para mostrar logs en UI
+        self.log_handler = LogTextHandler(self.txt_log)
+        self.log_handler.setLevel(logging.INFO)
+        self.log_handler.setFormatter(CustomFormatter())
+        logger.addHandler(self.log_handler)
+
+    def crear_objetos_predeterminados(self):
+        # Crear algunos objetos por defecto
+        objeto1 = ObjetoBinario("Objeto 1", num_categorias=3, bits_por_categoria=4)
+        objeto2 = ObjetoBinario("Objeto 2", num_categorias=3, bits_por_categoria=4)
+        objeto3 = ObjetoBinario("Objeto 3", num_categorias=3, bits_por_categoria=4)
+        
+        self.objetos = [objeto1, objeto2, objeto3]
+        
+        # Actualizar la vista de árbol
+        self.actualizar_vista_objetos()
+        
+        # Crear entorno con estos objetos
+        self.entorno = EntornoSimulado(self.objetos)
+
+    def actualizar_vista_objetos(self):
+        # Limpiar vista actual
+        for item in self.tree_objetos.get_children():
+            self.tree_objetos.delete(item)
+        
+        # Rellenar con los objetos actuales
+        for objeto in self.objetos:
+            categorias_str = ", ".join([str(int(cat, 2)) for cat in objeto.obtener_categorias()])
+            self.tree_objetos.insert("", tk.END, values=(objeto.nombre, categorias_str))
+
+    def mostrar_dialogo_nuevo_objeto(self):
+        # Crear diálogo para nuevo objeto
+        dialogo = tk.Toplevel(self.root)
+        dialogo.title("Nuevo Objeto")
+        dialogo.geometry("300x250")
+        dialogo.transient(self.root)
+        dialogo.grab_set()
+        
+        # Campos del formulario
+        ttk.Label(dialogo, text="Nombre:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        entry_nombre = ttk.Entry(dialogo, width=20)
+        entry_nombre.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
+        
+        ttk.Label(dialogo, text="Número de categorías:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        entry_num_cat = ttk.Entry(dialogo, width=5)
+        entry_num_cat.insert(0, "3")
+        entry_num_cat.grid(row=1, column=1, sticky=tk.W, padx=5, pady=5)
+        
+        ttk.Label(dialogo, text="Bits por categoría:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        entry_bits = ttk.Entry(dialogo, width=5)
+        entry_bits.insert(0, "4")
+        entry_bits.grid(row=2, column=1, sticky=tk.W, padx=5, pady=5)
+        
+        # Botones
+        frame_botones = ttk.Frame(dialogo)
+        frame_botones.grid(row=3, column=0, columnspan=2, pady=10)
+        
+        def guardar_objeto():
+            try:
+                nombre = entry_nombre.get().strip()
+                if not nombre:
+                    messagebox.showerror("Error", "El nombre no puede estar vacío")
+                    return
+                
+                num_cat = int(entry_num_cat.get())
+                bits = int(entry_bits.get())
+                
+                if num_cat <= 0 or bits <= 0:
+                    messagebox.showerror("Error", "Los valores deben ser positivos")
+                    return
+                
+                # Crear nuevo objeto
+                nuevo_objeto = ObjetoBinario(nombre, num_cat, bits)
+                self.objetos.append(nuevo_objeto)
+                
+                # Actualizar vista
+                self.actualizar_vista_objetos()
+                
+                # Recrear entorno con los nuevos objetos
+                self.entorno = EntornoSimulado(self.objetos)
+                
+                # Actualizar estado
+                self.actualizar_info_estado()
+                
+                # Cerrar diálogo
+                dialogo.destroy()
+                
+            except ValueError as e:
+                messagebox.showerror("Error", f"Valor inválido: {e}")
+        
+        ttk.Button(frame_botones, text="Guardar", command=guardar_objeto).pack(side=tk.LEFT, padx=5)
+        ttk.Button(frame_botones, text="Cancelar", command=dialogo.destroy).pack(side=tk.LEFT, padx=5)
+
+    def editar_objeto_seleccionado(self):
+        # Obtener objeto seleccionado
+        seleccion = self.tree_objetos.selection()
+        if not seleccion:
+            messagebox.showinfo("Información", "Seleccione un objeto para editar")
+            return
+        
+        indice = self.tree_objetos.index(seleccion[0])
+        objeto = self.objetos[indice]
+        
+        # Crear diálogo para editar
+        dialogo = tk.Toplevel(self.root)
+        dialogo.title(f"Editar {objeto.nombre}")
+        dialogo.geometry("400x400")
+        dialogo.transient(self.root)
+        dialogo.grab_set()
+        
+        # Campos básicos
+        ttk.Label(dialogo, text="Nombre:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        entry_nombre = ttk.Entry(dialogo, width=20)
+        entry_nombre.insert(0, objeto.nombre)
+        entry_nombre.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
+        
+        # No permitimos cambiar número de categorías o bits (por simplicidad)
+        ttk.Label(dialogo, text=f"Categorías: {objeto.num_categorias}").grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        ttk.Label(dialogo, text=f"Bits por categoría: {objeto.bits_por_categoria}").grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        # Frame para valores de categorías
+        frame_categorias = ttk.LabelFrame(dialogo, text="Valores de Categorías")
+        frame_categorias.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky=tk.W+tk.E)
+        
+        # Campos para cada categoría
+        entries_categoria = []
+        for i, categoria in enumerate(objeto.obtener_categorias()):
+            ttk.Label(frame_categorias, text=f"Categoría {i+1}:").grid(row=i, column=0, sticky=tk.W, padx=5, pady=2)
+            entry_cat = ttk.Entry(frame_categorias, width=10)
+            entry_cat.insert(0, str(int(categoria, 2)))
+            entry_cat.grid(row=i, column=1, sticky=tk.W, padx=5, pady=2)
+            entries_categoria.append(entry_cat)
+        
+        # Botones
+        frame_botones = ttk.Frame(dialogo)
+        frame_botones.grid(row=4, column=0, columnspan=2, pady=10)
+        
+        def guardar_cambios():
+            try:
+                # Actualizar nombre
+                objeto.nombre = entry_nombre.get().strip()
+                
+                # Actualizar valores de categorías
+                for i, entry in enumerate(entries_categoria):
+                    valor = int(entry.get())
+                    objeto.actualizar_categoria(i, str(valor))
+                
+                # Actualizar vista
+                self.actualizar_vista_objetos()
+                
+                # Actualizar estado
+                self.actualizar_info_estado()
+                
+                # Cerrar diálogo
+                dialogo.destroy()
+                
+            except ValueError as e:
+                messagebox.showerror("Error", f"Valor inválido: {e}")
+        
+        ttk.Button(frame_botones, text="Guardar", command=guardar_cambios).pack(side=tk.LEFT, padx=5)
+        ttk.Button(frame_botones, text="Cancelar", command=dialogo.destroy).pack(side=tk.LEFT, padx=5)
+
+    def eliminar_objeto_seleccionado(self):
+        # Obtener objeto seleccionado
+        seleccion = self.tree_objetos.selection()
+        if not seleccion:
+            messagebox.showinfo("Información", "Seleccione un objeto para eliminar")
+            return
+        
+        indice = self.tree_objetos.index(seleccion[0])
+        
+        # Confirmar eliminación
+        if messagebox.askyesno("Confirmar", f"¿Seguro que desea eliminar {self.objetos[indice].nombre}?"):
+            # Eliminar objeto
+            del self.objetos[indice]
+            
+            # Si no quedan objetos, crear uno por defecto
+            if not self.objetos:
+                self.objetos.append(ObjetoBinario("Objeto Default", 3, 4))
+            
+            # Actualizar vista
+            self.actualizar_vista_objetos()
+            
+            # Recrear entorno
+            self.entorno = EntornoSimulado(self.objetos)
+            
+            # Actualizar estado
+            self.actualizar_info_estado()
+
+    def actualizar_info_estado(self):
+        if self.entorno:
+            self.lbl_estado_actual.config(text=self.entorno.obtener_texto_estado())
+            logger.info(f"Estado actual: {self.entorno.obtener_texto_estado()}")
+        else:
+            self.lbl_estado_actual.config(text="No iniciado")
+
+    def iniciar_entrenamiento(self):
+        if not self.entorno:
+            messagebox.showerror("Error", "No hay un entorno configurado")
+            return
+        
+        if self.entrenamiento_activo:
+            return
+        
+        # Deshabilitar botón de inicio y habilitar botón de detener
+        self.btn_iniciar.config(state=tk.DISABLED)
+        self.btn_detener.config(state=tk.NORMAL)
+        
+        # Configuración de hiperparámetros
+        try:
+            learning_rate = float(self.entry_lr.get())
+            gamma = float(self.entry_gamma.get())
+            epsilon = float(self.entry_epsilon.get())
+            epsilon_decay = float(self.entry_epsilon_decay.get())
+            
+            # Arquitectura de red
+            hidden_layers_str = self.entry_hidden_layers.get()
+            hidden_layers = [int(x.strip()) for x in hidden_layers_str.split(",")]
+        except ValueError as e:
+            messagebox.showerror("Error", f"Valor inválido en los parámetros: {e}")
+            sel
