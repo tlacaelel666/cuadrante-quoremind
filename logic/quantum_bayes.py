@@ -294,3 +294,117 @@ def quantum_hybrid_simulation():
 # Ejecutar simulación
 if __name__ == "__main__":
     quantum_hybrid_system = quantum_hybrid_simulation()
+
+# analizador cuántico de Bayes 
+
+class QuantumBayesAnalyzer:
+    def __init__(self, api_token: str = None):
+        self.EPSILON = 1e-6
+        self.HIGH_ENTROPY_THRESHOLD = 0.8
+        self.HIGH_COHERENCE_THRESHOLD = 0.6
+        self.ACTION_THRESHOLD = 0.5
+        
+        if api_token:
+            IBMQ.save_account(api_token)
+        IBMQ.load_account()
+        self.provider = IBMQ.get_provider('ibm-q')
+        
+    def create_superposition_circuit(self, amplitud: float, fase: float) -> QuantumCircuit:
+        """Crea un circuito cuántico con superposición controlada."""
+        qc = QuantumCircuit(2, 2)
+        
+        # Crear superposición con amplitud controlada
+        theta = 2 * np.arcsin(np.sqrt(amplitud))
+        qc.ry(theta, 0)
+        
+        # Aplicar fase
+        qc.p(fase, 0)
+        
+        # Entrelazar los qubits
+        qc.cx(0, 1)
+        
+        # Medir
+        qc.measure_all()
+        
+        return qc
+    
+    def calculate_quantum_entropy(self, counts: Dict[str, int]) -> float:
+        """Calcula la entropía de Shannon de los resultados cuánticos."""
+        total = sum(counts.values())
+        probabilities = [count/total for count in counts.values()]
+        probabilities = [p for p in probabilities if p > 0]
+        return -sum(p * np.log2(p) for p in probabilities)
+    
+    def calculate_quantum_coherence(self, counts: Dict[str, int]) -> float:
+        """Calcula una medida de coherencia basada en los resultados."""
+        total = sum(counts.values())
+        # Calcular coherencia basada en la diferencia entre estados base
+        prob_0 = counts.get('00', 0) / total
+        prob_1 = counts.get('11', 0) / total
+        return abs(prob_0 - prob_1)
+    
+    def execute_quantum_analysis(self, amplitud: float, fase: float, 
+                               prn_influence: float) -> Dict:
+        """Ejecuta el análisis cuántico con lógica bayesiana."""
+        # Crear y ejecutar circuito
+        circuit = self.create_superposition_circuit(amplitud, fase)
+        backend = self.provider.get_backend('ibm_nairobi')  # o cualquier otro disponible
+        job = execute(circuit, backend=backend, shots=1024)
+        job_monitor(job)
+        counts = job.result().get_counts()
+        
+        # Calcular métricas cuánticas
+        entropy = self.calculate_quantum_entropy(counts)
+        coherence = self.calculate_quantum_coherence(counts)
+        
+        # Aplicar lógica bayesiana
+        high_entropy_prior = 0.3 if entropy > self.HIGH_ENTROPY_THRESHOLD else 0.1
+        high_coherence_prior = 0.6 if coherence > self.HIGH_COHERENCE_THRESHOLD else 0.2
+        
+        conditional_b_given_a = (prn_influence * 0.7 + (1 - prn_influence) * 0.3 
+                               if entropy > self.HIGH_ENTROPY_THRESHOLD else 0.2)
+        
+        posterior_a_given_b = ((conditional_b_given_a * high_entropy_prior) / 
+                             (high_coherence_prior if high_coherence_prior != 0 else self.EPSILON))
+        
+        # Determinar acción basada en coherencia
+        action = 1 if coherence > self.HIGH_COHERENCE_THRESHOLD else 0
+        joint_probability = self.calculate_joint_probability(coherence, action, prn_influence)
+        conditional_action = joint_probability / (high_coherence_prior if high_coherence_prior != 0 else self.EPSILON)
+        
+        return {
+            "counts": counts,
+            "entropy": entropy,
+            "coherence": coherence,
+            "high_entropy_prior": high_entropy_prior,
+            "high_coherence_prior": high_coherence_prior,
+            "posterior_probability": posterior_a_given_b,
+            "conditional_action": conditional_action,
+            "recommended_action": 1 if conditional_action > self.ACTION_THRESHOLD else 0
+        }
+    
+    def calculate_joint_probability(self, coherence: float, action: int, 
+                                  prn_influence: float) -> float:
+        """Calcula la probabilidad conjunta basada en coherencia y acción."""
+        if coherence > self.HIGH_COHERENCE_THRESHOLD:
+            if action == 1:
+                return prn_influence * 0.8 + (1 - prn_influence) * 0.2
+            else:
+                return prn_influence * 0.1 + (1 - prn_influence) * 0.7
+        return 0.3
+
+# Ejemplo de uso
+if __name__ == "__main__":
+    analyzer = QuantumBayesAnalyzer("TU_API_TOKEN")
+    results = analyzer.execute_quantum_analysis(
+        amplitud=0.5,
+        fase=np.pi/4,
+        prn_influence=0.6
+    )
+    
+    print("Resultados del análisis cuántico bayesiano:")
+    print(f"Distribución de estados: {results['counts']}")
+    print(f"Entropía cuántica: {results['entropy']:.4f}")
+    print(f"Coherencia cuántica: {results['coherence']:.4f}")
+    print(f"Probabilidad posterior: {results['posterior_probability']:.4f}")
+    print(f"Acción recomendada: {results['recommended_action']}")
