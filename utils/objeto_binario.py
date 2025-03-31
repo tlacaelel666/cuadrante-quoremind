@@ -1,3 +1,10 @@
+"""Este script crea una aplicación de escritorio con una interfaz gráfica (GUI) que simula un entorno simple y permite entrenar a un "agente" inteligente para interactuar con él usando técnicas de Aprendizaje por Refuerzo (Reinforcement Learning - RL).
+
+fecha 30-03-25
+autor: Jacobo Tlacaelel Mina Rodríguez 
+proyecto cuadrante-QuoreMind v1.0.0
+"""
+
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext, filedialog
 import torch
