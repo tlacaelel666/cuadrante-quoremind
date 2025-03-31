@@ -19,7 +19,7 @@ from qiskit.quantum_info import Statevector
 
 # Importar clases del sistema híbrido y del módulo de circuitos cuánticos.
 from quantum_hybrid_system import QuantumBayesianHybridSystem
-from integrated_quantum_network import ResilientQuantumCircuit
+from quantum_fourier_network import ResilientQuantumCircuit
 
 def generate_quantum_data(num_qubits: int = 5) -> np.ndarray:
     """
