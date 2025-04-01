@@ -94,6 +94,57 @@ class PRN:
         algo_str = f", algorithm={self.algorithm_type}" if self.algorithm_type else ""
         return f"PRN(influence={self.influence:.4f}{algo_str}{', ' + params_str if params_str else ''})"
 
+class EnhancedPRN(PRN):
+    """
+    Extiende la clase PRN para registrar distancias de Mahalanobis y con ello
+    definir un 'ruido cuántico' adicional en el sistema.
+    """
+    def __init__(self, influence: float = 0.5, algorithm_type: str = None, **parameters):
+        """
+        Constructor que permite definir la influencia y el tipo de algoritmo,
+        además de inicializar una lista para conservar registros promedio de
+        distancias de Mahalanobis.
+        """
+        super().__init__(influence, algorithm_type, **parameters)
+        self.mahalanobis_records = []
+
+    def record_quantum_noise(self, probabilities: dict, quantum_states: np.ndarray):
+        """
+        Registra un 'ruido cuántico' basado en la distancia de Mahalanobis
+        calculada para los estados cuánticos.
+
+        Parámetros:
+        -----------
+        probabilities: dict
+            Diccionario de probabilidades (ej. {"0": p_0, "1": p_1, ...}).
+        quantum_states: np.ndarray
+            Estados cuánticos (n_muestras, n_dimensiones).
+
+        Retorna:
+        --------
+        (entropy, mahal_mean): Tuple[float, float]
+            - Entropía calculada a partir de probabilities.
+            - Distancia promedio de Mahalanobis.
+        """
+        # Calculamos la entropía (este método se asume en la clase base PRN o BayesLogic).
+        entropy = self.record_noise(probabilities)
+
+        # Ajuste del estimador de covarianza
+        cov_estimator = EmpiricalCovariance().fit(quantum_states)
+        mean_state = np.mean(quantum_states, axis=0)
+        inv_cov = np.linalg.pinv(cov_estimator.covariance_)
+
+        # Cálculo vectorizado de la distancia
+        diff = quantum_states - mean_state
+        aux = diff @ inv_cov
+        dist_sqr = np.einsum('ij,ij->i', aux, diff)
+        distances = np.sqrt(dist_sqr)
+        mahal_mean = np.mean(distances)
+
+        # Se registra la distancia promedio
+        self.mahalanobis_records.append(mahal_mean)
+
+        return entropy, mahal_mean
 
 
 class FFTBayesIntegrator:
@@ -189,3 +240,5 @@ class FFTBayesIntegrator:
             weight_matrix[i] = np.roll(base_features, shift)
         weight_matrix = scale * weight_matrix / np.max(np.abs(weight_matrix))  # Escala la matriz para normalizarla.
         return torch.tensor(weight_matrix, dtype=torch.float32)
+
+
