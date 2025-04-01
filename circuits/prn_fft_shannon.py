@@ -1,3 +1,101 @@
+class PRN:
+    """
+    Clase para modelar el Ruido Probabilístico de Referencia (Probabilistic Reference Noise).
+    
+    Esta clase generalizada puede ser utilizada para representar cualquier tipo de
+    influencia probabilística en un sistema.
+    
+    Atributos:
+        influence (float): Factor de influencia entre 0 y 1.
+        parameters (dict): Parámetros adicionales específicos del algoritmo.
+    """
+    def __init__(self, influence: float, algorithm_type: str = None, **parameters):
+        """
+        Inicializa un objeto PRN con un factor de influencia y parámetros específicos.
+        
+        Args:
+            influence (float): Factor de influencia entre 0 y 1.
+            algorithm_type (str, opcional): Tipo de algoritmo a utilizar.
+            **parameters: Parámetros adicionales específicos del algoritmo.
+        
+        Raises:
+            ValueError: Si influence está fuera del rango [0,1].
+        """
+        if not 0 <= influence <= 1:
+            raise ValueError(f"La influencia debe estar entre 0 y 1. Valor recibido: {influence}")
+
+        self.influence = influence
+        self.algorithm_type = algorithm_type
+        self.parameters = parameters
+
+    def adjust_influence(self, adjustment: float) -> None:
+        """
+        Ajusta el factor de influencia dentro de los límites permitidos.
+        
+        Args:
+            adjustment (float): Valor de ajuste (positivo o negativo).
+        
+        Raises:
+            ValueError: Si el nuevo valor de influencia está fuera del rango [0,1].
+        """
+        new_influence = self.influence + adjustment
+
+        if not 0 <= new_influence <= 1:
+            # Truncamos al rango válido
+            new_influence = max(0, min(1, new_influence))
+            print(f"ADVERTENCIA: Influencia ajustada a {new_influence} para mantenerla en el rango [0,1]")
+
+        self.influence = new_influence
+
+    def combine_with(self, other_prn: 'PRN', weight: float = 0.5) -> 'PRN':
+        """
+        Combina este PRN con otro según un peso específico.
+        
+        Args:
+            other_prn (PRN): Otro objeto PRN para combinar.
+            weight (float): Peso para la combinación, entre 0 y 1 (por defecto 0.5).
+        
+        Returns:
+            PRN: Un nuevo objeto PRN con la influencia combinada.
+        
+        Raises:
+            ValueError: Si weight está fuera del rango [0,1].
+        """
+        if not 0 <= weight <= 1:
+            raise ValueError(f"El peso debe estar entre 0 y 1. Valor recibido: {weight}")
+
+        # Combinación ponderada de las influencias
+        combined_influence = self.influence * weight + other_prn.influence * (1 - weight)
+
+        # Combinar los parámetros de ambos PRN
+        combined_params = {**self.parameters, **other_prn.parameters}
+
+        # Elegir el tipo de algoritmo según el peso
+        algorithm = self.algorithm_type if weight >= 0.5 else other_prn.algorithm_type
+
+         # Clase PRN modificada para representar números complejos.
+    """
+    def __init__(self, real_component: float, imaginary_component: float, algorithm_type: str = None, **parameters):
+        self.real_component = real_component
+        self.imaginary_component = imaginary_component
+        self.influence = np.sqrt(real_component**2 + imaginary_component**2) #Modulo del numero complejo.
+        self.algorithm_type = algorithm_type
+        self.parameters = parameters
+        return PRN(combined_influence, algorithm, **combined_params)
+    
+    def __str__(self) -> str:
+        """
+        Representación en string del objeto PRN.
+
+        Returns:
+            str: Descripción del objeto PRN.
+        """
+        params_str = ", ".join(f"{k}={v}" for k, v in self.parameters.items())
+        algo_str = f", algorithm={self.algorithm_type}" if self.algorithm_type else ""
+        return f"PRN(influence={self.influence:.4f}{algo_str}{', ' + params_str if params_str else ''})"
+
+
+
 class FFTBayesIntegrator:
     """
     Clase que integra la Transformada Rápida de Fourier (FFT) con el análisis bayesiano
