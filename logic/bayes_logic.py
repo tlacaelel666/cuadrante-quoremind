@@ -1,3 +1,8 @@
+"""Este marco de trabajo en Python proporciona herramientas para implementar lógica bayesiana, realizar análisis estadísticos y modelar el "Ruido Probabilístico de Referencia" (PRN).
+Fecha: 4-4-2025.
+autor: Jacobo Tlacaelel Mina Rodríguez 
+proyecto: QuoreMind v1.0.0
+"""
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
