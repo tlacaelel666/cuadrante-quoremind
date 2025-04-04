@@ -6,7 +6,7 @@ Este módulo integra circuitos cuánticos resistentes con análisis FFT y bayesi
 Combina la creación de estados cuánticos mediante Qiskit con procesamiento
 avanzado basado en FFT para generar features e inicializar redes neuronales.
 
-Autor: Jacobo Tlacaelel Mina Rodríguez (optimizado y documentación por Gemini,Claude y ChatGPT)
+Autor: Jacobo Tlacaelel Mina Rodríguez (optimizado y documentación por Gemini, Claude y ChatGPT)
 Fecha: 16/03/2025
 Versión: cuadrante-coremind v1.2
 """
