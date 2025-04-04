@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+"""
+Módulo: IntegratedQuantumNetwork
+
+Este módulo integra circuitos cuánticos resistentes con análisis FFT y bayesiano.
+Combina la creación de estados cuánticos mediante Qiskit con procesamiento
+avanzado basado en FFT para generar features e inicializar redes neuronales.
+
+Autor: Jacobo Tlacaelel Mina Rodríguez (optimizado y documentación por Gemini,Claude y ChatGPT)
+Fecha: 16/03/2025
+Versión: cuadrante-coremind v1.2
+"""
+
 import numpy as np
 import torch
 from typing import Dict, List, Optional, Tuple, Union
@@ -11,24 +24,24 @@ logger = logging.getLogger(__name__)
 class PRN:
     """
     Clase para modelar el Ruido Probabilístico de Referencia (Probabilistic Reference Noise).
-    
+
     Esta clase generalizada puede ser utilizada para representar cualquier tipo de
     influencia probabilística en un sistema.
-    
+
     Atributos:
         influence (float): Factor de influencia entre 0 y 1.
-        algorithm_type (str): Tipo de algoritmo a utilizar.
-        parameters (dict): Parámetros adicionales específicos del algoritmo.
+        algorithm_type (str, opcional): Tipo de algoritmo a utilizar.
+        parameters (dict, opcional): Parámetros adicionales específicos del algoritmo.
     """
-    def __init__(self, influence: float, algorithm_type: str = None, **parameters):
+    def __init__(self, influence: float, algorithm_type: Optional[str] = None, **parameters: dict):
         """
         Inicializa un objeto PRN con un factor de influencia y parámetros específicos.
-        
+
         Args:
             influence (float): Factor de influencia entre 0 y 1.
             algorithm_type (str, opcional): Tipo de algoritmo a utilizar.
             **parameters: Parámetros adicionales específicos del algoritmo.
-        
+
         Raises:
             ValueError: Si influence está fuera del rango [0,1].
         """
@@ -42,10 +55,10 @@ class PRN:
     def adjust_influence(self, adjustment: float) -> None:
         """
         Ajusta el factor de influencia dentro de los límites permitidos.
-        
+
         Args:
             adjustment (float): Valor de ajuste (positivo o negativo).
-        
+
         Raises:
             ValueError: Si el nuevo valor de influencia está fuera del rango [0,1].
         """
@@ -61,14 +74,14 @@ class PRN:
     def combine_with(self, other_prn: 'PRN', weight: float = 0.5) -> 'PRN':
         """
         Combina este PRN con otro según un peso específico.
-        
+
         Args:
             other_prn (PRN): Otro objeto PRN para combinar.
             weight (float): Peso para la combinación, entre 0 y 1 (por defecto 0.5).
-        
+
         Returns:
             PRN: Un nuevo objeto PRN con la influencia combinada.
-        
+
         Raises:
             ValueError: Si weight está fuera del rango [0,1].
         """
@@ -85,21 +98,21 @@ class PRN:
         algorithm = self.algorithm_type if weight >= 0.5 else other_prn.algorithm_type
 
         return PRN(combined_influence, algorithm, **combined_params)
-    
-    def record_noise(self, probabilities: dict) -> float:
+
+    def record_noise(self, probabilities: Dict[str, float]) -> float:
         """
         Registra ruido basado en las probabilidades y calcula la entropía.
-        
+
         Args:
             probabilities (dict): Diccionario de probabilidades.
-            
+
         Returns:
             float: Entropía calculada.
         """
         values = list(probabilities.values())
         entropy = -sum(p * np.log2(p) if p > 0 else 0 for p in values)
         return entropy
-    
+
     def __str__(self) -> str:
         """
         Representación en string del objeto PRN.
@@ -115,11 +128,17 @@ class PRN:
 class ComplexPRN(PRN):
     """
     Clase PRN modificada para representar números complejos.
+
+    Hereda de la clase PRN y utiliza el módulo del número complejo como factor de influencia.
+
+    Atributos:
+        real_component (float): Componente real del número complejo.
+        imaginary_component (float): Componente imaginaria del número complejo.
     """
-    def __init__(self, real_component: float, imaginary_component: float, algorithm_type: str = None, **parameters):
+    def __init__(self, real_component: float, imaginary_component: float, algorithm_type: Optional[str] = None, **parameters: dict):
         """
         Inicializa un PRN complejo.
-        
+
         Args:
             real_component (float): Componente real.
             imaginary_component (float): Componente imaginaria.
@@ -132,22 +151,22 @@ class ComplexPRN(PRN):
         influence = np.sqrt(real_component**2 + imaginary_component**2)
         # Normalizar la influencia a [0,1]
         normalized_influence = min(1.0, influence)
-        
+
         super().__init__(normalized_influence, algorithm_type, **parameters)
-    
+
     def get_phase(self) -> float:
         """
         Calcula la fase del número complejo.
-        
+
         Returns:
             float: Fase en radianes.
         """
         return np.arctan2(self.imaginary_component, self.real_component)
-    
+
     def __str__(self) -> str:
         """
         Representación en string del objeto ComplexPRN.
-        
+
         Returns:
             str: Descripción del objeto ComplexPRN.
         """
@@ -160,33 +179,37 @@ class EnhancedPRN(PRN):
     """
     Extiende la clase PRN para registrar distancias de Mahalanobis y con ello
     definir un 'ruido cuántico' adicional en el sistema.
+
+    Atributos:
+        mahalanobis_records (list): Lista para almacenar los valores promedio de la distancia de Mahalanobis registrados.
     """
-    def __init__(self, influence: float = 0.5, algorithm_type: str = None, **parameters):
+    def __init__(self, influence: float = 0.5, algorithm_type: Optional[str] = None, **parameters: dict):
         """
         Constructor que permite definir la influencia y el tipo de algoritmo,
         además de inicializar una lista para conservar registros promedio de
         distancias de Mahalanobis.
+
+        Args:
+            influence (float, opcional): Factor de influencia entre 0 y 1. Por defecto 0.5.
+            algorithm_type (str, opcional): Tipo de algoritmo a utilizar.
+            **parameters: Parámetros adicionales específicos del algoritmo.
         """
         super().__init__(influence, algorithm_type, **parameters)
         self.mahalanobis_records = []
 
-    def record_quantum_noise(self, probabilities: dict, quantum_states: np.ndarray) -> Tuple[float, float]:
+    def record_quantum_noise(self, probabilities: Dict[str, float], quantum_states: np.ndarray) -> Tuple[float, float]:
         """
         Registra un 'ruido cuántico' basado en la distancia de Mahalanobis
         calculada para los estados cuánticos.
 
-        Parámetros:
-        -----------
-        probabilities: dict
-            Diccionario de probabilidades (ej. {"0": p_0, "1": p_1, ...}).
-        quantum_states: np.ndarray
-            Estados cuánticos (n_muestras, n_dimensiones).
+        Args:
+            probabilities (dict): Diccionario de probabilidades (ej. {"0": p_0, "1": p_1, ...}).
+            quantum_states (numpy.ndarray): Estados cuánticos (n_muestras, n_dimensiones).
 
-        Retorna:
-        --------
-        (entropy, mahal_mean): Tuple[float, float]
-            - Entropía calculada a partir de probabilities.
-            - Distancia promedio de Mahalanobis.
+        Returns:
+            Tuple[float, float]: Una tupla que contiene:
+                - entropy (float): Entropía calculada a partir de probabilities.
+                - mahal_mean (float): Distancia promedio de Mahalanobis.
         """
         # Calculamos la entropía
         entropy = self.record_noise(probabilities)
@@ -213,7 +236,7 @@ class StatisticalAnalysis:
     """
     Clase para realizar análisis estadísticos comunes en el contexto del ruido probabilístico.
     """
-    def shannon_entropy(self, data: list) -> float:
+    def shannon_entropy(self, data: Union[list, np.ndarray]) -> float:
         """
         Calcula la entropía de Shannon de un conjunto de datos.
 
@@ -236,14 +259,14 @@ class StatisticalAnalysis:
         entropy = -np.sum(probabilities * np.log2(probabilities))
 
         return entropy
-    
+
     def calculate_cosines(self, entropy: float, env_value: float) -> Tuple[float, float, float]:
         """
         Calcula los cosenos direccionales (x, y, z) para un vector tridimensional.
 
         Args:
-            entropy (float): Entropía de Shannon (x).
-            env_value (float): Valor contextual del entorno (y).
+            entropy (float): Entropía de Shannon (componente x).
+            env_value (float): Valor contextual del entorno (componente y).
 
         Returns:
             tuple: Cosenos direccionales (cos_x, cos_y, cos_z).
@@ -268,49 +291,53 @@ class StatisticalAnalysis:
 class BayesLogic:
     """
     Implementa la lógica bayesiana para actualizar creencias basadas en evidencia.
+
+    Atributos:
+        prior (Dict[str, float]): Distribución previa de probabilidades.
+        posterior (Dict[str, float]): Distribución posterior de probabilidades.
     """
-    def __init__(self, prior: Dict[str, float] = None):
+    def __init__(self, prior: Optional[Dict[str, float]] = None):
         """
         Inicializa la lógica bayesiana con creencias previas opcionales.
-        
+
         Args:
             prior (Dict[str, float], opcional): Distribución previa de probabilidades.
         """
         self.prior = prior or {}
         self.posterior = {}
-    
+
     def update(self, evidence: Dict[str, float]) -> Dict[str, float]:
         """
         Actualiza las creencias posteriores basadas en nueva evidencia.
-        
+
         Args:
             evidence (Dict[str, float]): Nueva evidencia como probabilidades.
-            
+
         Returns:
             Dict[str, float]: Distribución posterior actualizada.
         """
         # Si no hay prior, usar la evidencia como prior
         if not self.prior:
             self.prior = {k: 1/len(evidence) for k in evidence.keys()}
-        
+
         # Calcular normalización
         total = sum(self.prior[k] * evidence.get(k, 1) for k in self.prior)
-        
+
         # Actualizar posterior
         self.posterior = {k: (self.prior[k] * evidence.get(k, 1)) / total for k in self.prior}
-        
+
         return self.posterior
-    
-    def get_maximum_posterior(self) -> Tuple[str, float]:
+
+    def get_maximum_posterior(self) -> Tuple[Optional[str], float]:
         """
         Obtiene la hipótesis con mayor probabilidad posterior.
-        
+
         Returns:
-            Tuple[str, float]: Tupla con (hipótesis, probabilidad).
+            Tuple[str, float]: Tupla con (hipótesis, probabilidad). Retorna (None, 0) si no hay posterior calculada.
         """
         if not self.posterior:
             return None, 0
-        
+
         max_key = max(self.posterior, key=self.posterior.get)
         return max_key, self.posterior[max_key]
 
@@ -318,11 +345,16 @@ class BayesLogic:
 class ResilientQuantumCircuit:
     """
     Simula un circuito cuántico resistente a errores.
+
+    Atributos:
+        n_qubits (int): Número de qubits en el circuito.
+        n_states (int): Número de estados posibles (2^n_qubits).
+        state_vector (numpy.ndarray): Vector de estado del circuito cuántico.
     """
     def __init__(self, n_qubits: int):
         """
         Inicializa un circuito cuántico con n qubits.
-        
+
         Args:
             n_qubits (int): Número de qubits en el circuito.
         """
@@ -331,34 +363,38 @@ class ResilientQuantumCircuit:
         # Inicializar en estado |0...0⟩
         self.state_vector = np.zeros(self.n_states, dtype=complex)
         self.state_vector[0] = 1.0
-    
+
     def apply_gate(self, gate: np.ndarray, target_qubits: List[int]) -> None:
         """
         Aplica una compuerta cuántica a los qubits objetivo.
-        
+
         Args:
-            gate (np.ndarray): Matriz de la compuerta cuántica.
+            gate (numpy.ndarray): Matriz de la compuerta cuántica.
             target_qubits (List[int]): Lista de qubits objetivo.
+
+        Nota:
+            Esta es una implementación simplificada. En un caso real, se usarían
+            operaciones tensoriales para aplicar la compuerta al subespacio correcto.
         """
         # Implementación simplificada - en un caso real se usaría
         # operaciones tensoriales para aplicar la compuerta
         pass
-    
+
     def get_complex_amplitudes(self) -> List[complex]:
         """
         Obtiene las amplitudes complejas del estado actual.
-        
+
         Returns:
             List[complex]: Lista de amplitudes complejas.
         """
         return self.state_vector.tolist()
-    
+
     def get_probabilities(self) -> Dict[str, float]:
         """
         Calcula las probabilidades de cada estado.
-        
+
         Returns:
-            Dict[str, float]: Diccionario de probabilidades por estado.
+            Dict[str, float]: Diccionario de probabilidades por estado, donde las claves son las representaciones binarias de los estados.
         """
         probs = np.abs(self.state_vector)**2
         return {format(i, f"0{self.n_qubits}b"): prob for i, prob in enumerate(probs)}
@@ -369,6 +405,11 @@ class FFTBayesIntegrator:
     Clase que integra la Transformada Rápida de Fourier (FFT) con el análisis bayesiano
     para procesar señales cuánticas y generar representaciones para la inicialización informada
     de modelos o como features para redes neuronales.
+
+    Atributos:
+        bayes_logic (BayesLogic): Instancia de la clase BayesLogic para realizar inferencia bayesiana.
+        stat_analysis (StatisticalAnalysis): Instancia de la clase StatisticalAnalysis para realizar cálculos estadísticos.
+        cache (Dict[int, Dict[str, Union[numpy.ndarray, float]]]): Caché para almacenar resultados del procesamiento de estados cuánticos.
     """
     def __init__(self) -> None:
         """
@@ -381,12 +422,12 @@ class FFTBayesIntegrator:
     def process_quantum_circuit(self, quantum_circuit: ResilientQuantumCircuit) -> Dict[str, Union[np.ndarray, float]]:
         """
         Procesa un circuito cuántico resistente aplicando la FFT a su estado.
-        
+
         Args:
             quantum_circuit (ResilientQuantumCircuit): Circuito cuántico a procesar.
-            
+
         Returns:
-            Dict[str, Union[np.ndarray, float]]: Resultados del procesamiento.
+            Dict[str, Union[numpy.ndarray, float]]: Un diccionario que contiene las magnitudes y fases de la FFT, la entropía y la coherencia.
         """
         amplitudes = quantum_circuit.get_complex_amplitudes()  # Obtiene las amplitudes complejas del estado.
         return self.process_quantum_state(amplitudes)  # Procesa las amplitudes usando FFT.
@@ -394,16 +435,16 @@ class FFTBayesIntegrator:
     def process_quantum_state(self, quantum_state: List[complex]) -> Dict[str, Union[np.ndarray, float]]:
         """
         Procesa un estado cuántico aplicando la FFT y extrayendo características frecuenciales.
-        
+
         Args:
             quantum_state (List[complex]): Estado cuántico a procesar.
-            
+
         Returns:
-            Dict[str, Union[np.ndarray, float]]: Resultados del procesamiento.
-            
+            Dict[str, Union[numpy.ndarray, float]]: Un diccionario que contiene las magnitudes y fases de la FFT, la entropía y la coherencia.
+
         Raises:
             ValueError: Si el estado cuántico está vacío.
-            TypeError: Si el estado cuántico no es válido para conversión.
+            TypeError: Si el estado cuántico no es válido para conversión a numpy.array.
         """
         if not quantum_state:
             msg = "El estado cuántico no puede estar vacío."
@@ -440,12 +481,12 @@ class FFTBayesIntegrator:
     def fft_based_initializer(self, quantum_state: List[complex], out_dimension: int, scale: float = 0.01) -> torch.Tensor:
         """
         Inicializa una matriz de pesos basada en la FFT del estado cuántico.
-        
+
         Args:
             quantum_state (List[complex]): Estado cuántico a procesar.
-            out_dimension (int): Dimensión de salida de la matriz.
-            scale (float): Factor de escala para los valores. Por defecto 0.01.
-            
+            out_dimension (int): Dimensión de salida de la matriz de pesos.
+            scale (float): Factor de escala para los valores de los pesos. Por defecto 0.01.
+
         Returns:
             torch.Tensor: Matriz de pesos inicializada.
         """
@@ -456,19 +497,19 @@ class FFTBayesIntegrator:
         weight_matrix = scale * np.tile(norm_magnitudes, (out_dimension, 1))  # Crea matriz replicando el vector.
         return torch.tensor(weight_matrix, dtype=torch.float32)  # Convierte la matriz a tensor de PyTorch.
 
-    def advanced_fft_initializer(self, quantum_state: List[complex], out_dimension: int, 
-                                in_dimension: Optional[int] = None, scale: float = 0.01, 
+    def advanced_fft_initializer(self, quantum_state: List[complex], out_dimension: int,
+                                in_dimension: Optional[int] = None, scale: float = 0.01,
                                 use_phases: bool = True) -> torch.Tensor:
         """
         Inicializador avanzado que crea una matriz rectangular utilizando magnitudes y fases de la FFT.
-        
+
         Args:
             quantum_state (List[complex]): Estado cuántico a procesar.
-            out_dimension (int): Dimensión de salida de la matriz.
-            in_dimension (Optional[int]): Dimensión de entrada de la matriz. Por defecto None.
-            scale (float): Factor de escala para los valores. Por defecto 0.01.
+            out_dimension (int): Dimensión de salida de la matriz de pesos.
+            in_dimension (Optional[int]): Dimensión de entrada de la matriz de pesos. Si es None, se usa la longitud del estado cuántico.
+            scale (float): Factor de escala para los valores de los pesos. Por defecto 0.01.
             use_phases (bool): Si se deben usar las fases en la inicialización. Por defecto True.
-            
+
         Returns:
             torch.Tensor: Matriz de pesos inicializada.
         """
@@ -532,15 +573,15 @@ if __name__ == "__main__":
 
     # Crear un circuito cuántico simulado
     circuit = ResilientQuantumCircuit(2)  # 2 qubits
-    
+
     # Crear integrador FFT-Bayes
     integrator = FFTBayesIntegrator()
-    
+
     # Procesar el circuito
     result = integrator.process_quantum_circuit(circuit)
     print(f"Entropía del estado del circuito: {result['entropy']:.4f}")
     print(f"Coherencia del estado del circuito: {result['coherence']:.4f}")
-    
+
     # Inicializar pesos con FFT
     weights = integrator.advanced_fft_initializer(circuit.get_complex_amplitudes(), 4, 8)
     print(f"Forma de la matriz de pesos: {weights.shape}")
