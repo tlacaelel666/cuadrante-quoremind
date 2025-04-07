@@ -5,6 +5,9 @@ coremind_quantum_cli.py - Interfaz avanzada de línea de comandos para IBM Quant
 
 Una herramienta de CLI sofisticada para interactuar con IBM Quantum Experience
 dentro del marco de trabajo CoreMind powered with AI.
+Fecha: 07-abril-2025.
+Autor: Jacobo Tlacaelel Mina Rodríguez, optimizado y documentación Gemini AI, Cloude anthropic.
+version: QuoreMind v1.1.1
 
 Uso:
     python coremind_quantum_cli.py --token TU_TOKEN [--action {status,execute,list,jobs,results,custom}]
