@@ -6,9 +6,9 @@ Este módulo integra circuitos cuánticos resistentes con análisis FFT y bayesi
 Combina la creación de estados cuánticos mediante Qiskit con procesamiento
 avanzado basado en FFT para generar features e inicializar redes neuronales.
 
-Autor: Jacobo Tlacaelel Mina Rodríguez (optimizado y documentación por Gemini, Claude y ChatGPT)
-Fecha: 16/03/2025
-Versión: cuadrante-coremind v1.2
+Autor: Jacobo Tlacaelel Mina Rodríguez. (optimizado y documentación por Gemini, Claude y ChatGPT).
+Fecha creación/última actualización: 16/03/2025-08/04/2025.
+Versión: cuadrante-coremind v1.2.
 """
 
 import numpy as np
@@ -20,6 +20,30 @@ import logging
 # Configuración del logger
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+def mahalanobis_distance(data: np.ndarray, mean: np.ndarray, cov: Optional[np.ndarray] = None) -> np.ndarray:
+    """
+    Calcula la distancia de Mahalanobis para cada muestra en data.
+
+    Args:
+        data (np.ndarray): Array de datos con forma (n_muestras, n_features).
+        mean (np.ndarray): Vector de media con forma (n_features,).
+        cov (Optional[np.ndarray]): Matriz de covarianza. Si no se proporciona,
+                                     se estima a partir de data.
+
+    Returns:
+        np.ndarray: Array unidimensional con la distancia de Mahalanobis para cada muestra.
+    """
+    if cov is None:
+        cov_estimator = EmpiricalCovariance().fit(data)
+        cov = cov_estimator.covariance_
+    inv_cov = np.linalg.pinv(cov)
+    diff = data - mean
+    # Cálculo vectorizado de la distancia
+    left_product = diff @ inv_cov
+    squared_distances = np.einsum('ij,ij->i', left_product, diff)
+    return np.sqrt(squared_distances)
+
 
 class PRN:
     """
@@ -214,16 +238,16 @@ class EnhancedPRN(PRN):
         # Calculamos la entropía
         entropy = self.record_noise(probabilities)
 
-        # Ajuste del estimador de covarianza
+        # Estimación de la covarianza y cálculo de la distancia de Mahalanobis
         cov_estimator = EmpiricalCovariance().fit(quantum_states)
         mean_state = np.mean(quantum_states, axis=0)
         inv_cov = np.linalg.pinv(cov_estimator.covariance_)
 
-        # Cálculo vectorizado de la distancia
+        # Versión vectorizada del cálculo de la distancia usando np.einsum
         diff = quantum_states - mean_state
         aux = diff @ inv_cov
-        dist_sqr = np.einsum('ij,ij->i', aux, diff)
-        distances = np.sqrt(dist_sqr)
+        sq_dists = np.einsum('ij,ij->i', aux, diff)
+        distances = np.sqrt(sq_dists)
         mahal_mean = np.mean(distances)
 
         # Se registra la distancia promedio
@@ -495,7 +519,7 @@ class FFTBayesIntegrator:
         magnitudes = np.abs(fft_result)  # Obtiene las magnitudes.
         norm_magnitudes = magnitudes / np.sum(magnitudes)  # Normaliza las magnitudes.
         weight_matrix = scale * np.tile(norm_magnitudes, (out_dimension, 1))  # Crea matriz replicando el vector.
-        return torch.tensor(weight_matrix, dtype=torch.float32)  # Convierte la matriz a tensor de PyTorch.
+        return torch.tensor(weight_matrix, dtype=torch.float32)
 
     def advanced_fft_initializer(self, quantum_state: List[complex], out_dimension: int,
                                 in_dimension: Optional[int] = None, scale: float = 0.01,
@@ -547,7 +571,16 @@ class FFTBayesIntegrator:
 
 # Ejemplo de uso
 if __name__ == "__main__":
-    # Datos de prueba
+    # Ejemplo de cálculo genérico de distancia de Mahalanobis usando la función auxiliar:
+    data = np.array([[1.0, 2.0],
+                     [2.0, 3.0],
+                     [3.0, 4.0],
+                     [4.0, 5.0]])
+    mean_val = np.mean(data, axis=0)
+    distances = mahalanobis_distance(data, mean_val)
+    print("Distancias de Mahalanobis (utilizando la función auxiliar):", distances)
+
+    # Datos de prueba para análisis estadístico
     sample_data = [1, 2, 3, 4, 5, 5, 2]
     stat_analysis = StatisticalAnalysis()
     entropy = stat_analysis.shannon_entropy(sample_data)
@@ -567,7 +600,7 @@ if __name__ == "__main__":
     print(f"PRN complejo creado: {complex_prn}")
     print(f"Fase del PRN complejo: {complex_prn.get_phase():.4f} radianes")
 
-    # Crear PRN mejorado
+    # Crear PRN mejorado y usar registro de ruido cuántico (incluyendo la distancia de Mahalanobis)
     enhanced_prn = EnhancedPRN(0.5, "quantum", decay=0.01)
     print(f"PRN mejorado creado: {enhanced_prn}")
 
