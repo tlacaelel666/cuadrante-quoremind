@@ -1,6 +1,8 @@
+"""
 fecha: (apr)04/09/2025
 Autor: Jacobo Tlacaelel Mina Rodríguez 
 Versión: QuoreMind V1.1.3
+"""
 
 python import numpy as np from scipy.stats import multivariate_normal from scipy.spatial import distance
 
