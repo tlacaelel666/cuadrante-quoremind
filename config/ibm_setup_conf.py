@@ -32,71 +32,30 @@ from typing import Dict, List, Optional, Union, Tuple, Any, Callable
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import matplotlib # Importar matplotlib completo
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 try:
-    from tabulate import tabulate # Necesita: pip install tabulate
+    from tabulate import tabulate  # Necesita: pip install tabulate
     HAS_TABULATE = True
 except ImportError:
     HAS_TABULATE = False
     print("Advertencia: 'tabulate' no instalado. Salida de texto será menos formateada. Instalar con: pip install tabulate")
 
-
 # Importaciones de Qiskit
-# --- Advertencia de Deprecación ---
-# IBMQ está obsoleto. Usar qiskit_ibm_provider.
-# Aer está en qiskit_aer.
-# Ignis está obsoleto, usar qiskit_experiments.
-# -----------------------------------
-try:
-    from qiskit import IBMQ, Aer, QuantumCircuit, execute, transpile, ClassicalRegister, QuantumRegister
-    from qiskit.visualization import (
-        plot_histogram, plot_bloch_multivector, plot_state_city,
-        plot_gate_map, plot_error_map, plot_circuit_layout
-    )
-    from qiskit.tools.monitor import job_monitor
-    from qiskit.providers.ibmq import IBMQBackend, IBMQJob # Parte de qiskit.IBMQ
-    from qiskit.providers.ibmq.job import job_status_message, JobStatus
-    from qiskit.providers.ibmq.job.exceptions import IBMQJobApiError
-    from qiskit.providers.ibmq.exceptions import IBMQProviderError, IBMQAccountError
-    from qiskit.quantum_info import Statevector, state_fidelity, process_fidelity, average_gate_fidelity # Statevector está en quantum_info
-    from qiskit.result import Result
-    # from qiskit.providers.aer import AerSimulator # Usar Aer.get_backend
-    # from qiskit.providers.aer.noise import NoiseModel # Qiskit < 0.45: qiskit.providers.aer.noise
-    # Para Qiskit >= 0.46 (qiskit-aer >= 0.14) sería: from qiskit_aer.noise import NoiseModel
-    try:
-        # Intentar importación moderna si está disponible
-        from qiskit_aer.noise import NoiseModel
-    except ImportError:
-        # Fallback a la antigua si la nueva falla
-        from qiskit.providers.aer.noise import NoiseModel
-    from qiskit.circuit.library import (
-        QFT, GroverOperator, PhaseEstimation,
-        EfficientSU2, RealAmplitudes, ZZFeatureMap, QuantumVolume # Añadir QV
-    )
-    HAS_QISKIT = True
-except ImportError as import_error:
-    print(f"Error importando Qiskit: {import_error}. Funcionalidad cuántica limitada o ausente.", file=sys.stderr)
-    print("Asegúrate de tener instalado Qiskit y sus componentes (pip install qiskit qiskit-aer qiskit-ibm-provider matplotlib)", file=sys.stderr)
-    HAS_QISKIT = False
-    sys.exit(1)
-
-# Importaciones adicionales para VQE
-try:
-    from qiskit.algorithms import VQE, NumPyMinimumEigensolver
-    # Nota: qiskit.algorithms está obsoleto en Qiskit 1.0, migrar a qiskit_algorithms
-    from qiskit.algorithms.optimizers import COBYLA, SPSA, SLSQP
-    # Nota: qiskit.opflow está obsoleto en Qiskit 1.0, migrar a qiskit.quantum_info.SparsePauliOp
-    from qiskit.opflow import PauliSumOp, X, Y, Z, I
-    HAS_QISKIT_ALGORITHMS = True
-    logger.warning("Módulos qiskit.algorithms y qiskit.opflow están obsoletos. Considera migrar.")
-except ImportError:
-    HAS_QISKIT_ALGORITHMS = False
-    # No registrar advertencia aquí si Qiskit base ya falló
-    if HAS_QISKIT:
-        logger.warning("No se pudieron importar módulos de algoritmos/opflow de Qiskit. Funcionalidad VQE no disponible.")
-
+from qiskit import QuantumCircuit, transpile, execute
+from qiskit.visualization import (
+    plot_histogram, plot_bloch_multivector, plot_state_city,
+    plot_gate_map, plot_error_map, plot_circuit_layout
+)
+from qiskit.tools.monitor import job_monitor
+from qiskit_ibm_provider import IBMProvider, IBMJob, JobStatus, IBMJobApiError, IBMProviderError, IBMAccountError
+from qiskit.quantum_info import Statevector
+from qiskit.result import Result
+from qiskit_aer.noise import NoiseModel
+from qiskit.circuit.library import (
+    QFT, GroverOperator, EfficientSU2, ZZFeatureMap, QuantumVolume
+)
 
 # Configuración del sistema de logging
 LOG_FORMAT = '%(asctime)s [%(levelname)s] %(message)s'
@@ -105,10 +64,10 @@ logging.basicConfig(
     format=LOG_FORMAT,
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("coremind_quantum.log", mode='a', encoding='utf-8') # Añadir encoding
+        logging.FileHandler("coremind_quantum.log", mode='a', encoding='utf-8')  # Añadir encoding
     ]
 )
-logger = logging.getLogger("coremind_quantum")
+logger = logging.getLogger("coremind quantum")
 
 
 class CoreMindQuantumManager:
@@ -122,27 +81,23 @@ class CoreMindQuantumManager:
             verbose: Activa logging detallado.
             timeout: Tiempo máximo de espera para operaciones de red (ej. retrieve_job).
         """
-        if not HAS_QISKIT:
-            raise RuntimeError("Qiskit no está instalado. El gestor cuántico no puede operar.")
         self.token = token
-        self.provider = None
+        self.provider = IBMProvider(token=token)
         self.verbose = verbose
-        self.timeout = timeout # Timeout para operaciones bloqueantes (ej. job results)
+        self.timeout = timeout  # Timeout para operaciones bloqueantes (ej. job results)
         self.session_start_time = datetime.now()
 
         # Cache simple para propiedades (refrescar cada día) y resultados
         self._backend_properties_cache: Dict[str, Any] = {}
-        self._results_cache: Dict[str, Result] = {} # Cache de resultados por job_id
+        self._results_cache: Dict[str, Result] = {}  # Cache de resultados por job_id
 
         if verbose:
             logger.setLevel(logging.DEBUG)
 
         self._display_banner()
-        self._setup_connection()
 
     def _display_banner(self) -> None:
         """Muestra un banner de inicio."""
-        # (Banner ASCII como estaba antes)
         banner = """
         ┌──────────────────────────────────────────────────────┐
         │                                                      │
@@ -167,138 +122,13 @@ class CoreMindQuantumManager:
         """
         print(banner)
         print(f"Sesión iniciada: {self.session_start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print("="*70)
-
-    def _setup_connection(self) -> None:
-        """Establece la conexión con IBM Quantum (usando API obsoleta)."""
-        try:
-            logger.info("Configurando conexión con IBM Quantum (usando IBMQ obsoleto)...")
-            logger.warning("El módulo IBMQ está obsoleto. Considera migrar a qiskit-ibm-provider.")
-            try:
-                if IBMQ.active_account():
-                    logger.debug("Deshabilitando cuenta IBMQ activa existente...")
-                    IBMQ.disable_account()
-            except Exception: logger.debug("No hay cuenta IBMQ activa.")
-            IBMQ.save_account(self.token, overwrite=True)
-            IBMQ.load_account()
-            # Intentar obtener proveedor por defecto o especificar hub/group/project si es necesario
-            try:
-                 self.provider = IBMQ.get_provider(hub='ibm-q') # Default para acceso público
-            except IBMQProviderError:
-                 logger.warning("No se pudo obtener proveedor 'ibm-q'. Intentando con proveedores disponibles...")
-                 # Listar proveedores y tomar el primero podría ser una opción, pero es menos robusto
-                 # self.provider = IBMQ.providers()[0] # No recomendado sin saber cuál es
-                 raise IBMQProviderError("No se pudo encontrar un proveedor adecuado. Verifica tu acceso (hub/group/project).")
-
-            logger.info(f"✓ Conexión establecida con IBM Quantum. Proveedor: {self.provider.name()}")
-        except IBMQAccountError as e:
-            logger.error(f"Error de autenticación IBMQ: {str(e)}. Verifica tu token.")
-            sys.exit(1)
-        except IBMQProviderError as e:
-            logger.error(f"Error del proveedor IBMQ: {str(e)}. Verifica tu acceso (hub/group/project).")
-            sys.exit(1)
-        except Exception as e:
-            logger.error(f"Error inesperado al conectar con IBMQ: {str(e)}")
-            sys.exit(1)
-
-    def _flatten_dict(self, d: Dict, parent_key: str = '', sep: str ='.') -> Dict:
-        """Aplana un diccionario anidado."""
-        items = {}
-        for k, v in d.items():
-            new_key = f"{parent_key}{sep}{k}" if parent_key else k
-            if isinstance(v, dict):
-                items.update(self._flatten_dict(v, new_key, sep=sep))
-            elif isinstance(v, list):
-                 # Convertir listas (como basis_gates o coupling_map) a string
-                 items[new_key] = json.dumps(v) if v else ""
-            else:
-                items[new_key] = v
-        return items
-
-    def _format_output(self, data: Union[List[Dict], Dict], headers: Optional[List[str]] = None,
-                       output_format: str = 'text', save_path: Optional[str] = None,
-                       title: Optional[str] = None) -> None:
-        """Formatea y muestra/guarda los datos."""
-        output_str = ""
-        if title:
-             title_line = f"=== {title} ==="
-             output_str += title_line + "\n" + "="*len(title_line) + "\n"
-
-        if not data:
-            output_str += "No hay datos para mostrar."
-        elif output_format == 'json':
-            try:
-                # Añadir default=str para manejar tipos no serializables como datetime
-                output_str += json.dumps(data, indent=2, ensure_ascii=False, default=str)
-            except TypeError as e:
-                 logger.error(f"Error al serializar a JSON: {e}. Intentando con representación simple.")
-                 output_str += str(data)
-        elif output_format == 'csv':
-            if isinstance(data, list) and data:
-                flat_data = [self._flatten_dict(row) for row in data]
-                if flat_data:
-                    # Usar todas las claves presentes como cabeceras
-                    all_keys = set().union(*(d.keys() for d in flat_data))
-                    csv_headers = sorted(list(all_keys))
-                    output_lines = [','.join(csv_headers)]
-                    for row_dict in flat_data:
-                        output_lines.append(','.join(f'"{row_dict.get(h, "")}"' for h in csv_headers)) # Entrecomillar
-                    output_str += '\n'.join(output_lines)
-                else: output_str += "Datos vacíos o no estructurados para CSV."
-            elif isinstance(data, dict):
-                flat_data = self._flatten_dict(data)
-                csv_headers = ["Clave", "Valor"]
-                output_lines = [','.join(csv_headers)]
-                for key, value in flat_data.items():
-                    output_lines.append(f'"{key}","{value}"')
-                output_str += '\n'.join(output_lines)
-            else:
-                 output_str += "Formato CSV no soportado para este tipo de datos."
-        else: # text (default)
-             if isinstance(data, list) and data:
-                  if not headers:
-                       # Intentar obtener cabeceras comunes, priorizando las más frecuentes
-                       all_keys = set().union(*(d.keys() for d in data))
-                       headers = sorted(list(all_keys))
-                  # Convertir datos a lista de listas
-                  table_data = [[str(item.get(h, 'N/A')) for h in headers] for item in data]
-                  # Limitar longitud de celdas
-                  MAX_CELL_WIDTH = 50
-                  for r_idx, row in enumerate(table_data):
-                      for c_idx, cell in enumerate(row):
-                          if len(cell) > MAX_CELL_WIDTH:
-                              table_data[r_idx][c_idx] = cell[:MAX_CELL_WIDTH-3] + "..."
-                  if HAS_TABULATE:
-                      output_str += tabulate(table_data, headers=headers, tablefmt="grid", maxcolwidths=MAX_CELL_WIDTH)
-                  else: # Fallback sin tabulate
-                       output_str += " | ".join(headers) + "\n"
-                       output_str += "-+-".join(['-' * len(h) for h in headers]) + "\n"
-                       for row in table_data: output_str += " | ".join(row) + "\n"
-
-             elif isinstance(data, dict):
-                 flat_data = self._flatten_dict(data)
-                 if HAS_TABULATE:
-                      output_str += tabulate(flat_data.items(), headers=["Clave", "Valor"], tablefmt="grid")
-                 else: # Fallback
-                      for key, value in flat_data.items(): output_str += f"{key}: {value}\n"
-             else:
-                 output_str += str(data)
-
-        # Imprimir y/o guardar
-        print("\n" + output_str) # Añadir salto de línea antes
-        if save_path:
-            try:
-                with open(save_path, 'w', encoding='utf-8') as f:
-                    f.write(output_str)
-                logger.info(f"Resultados guardados en: {save_path}")
-            except IOError as e:
-                logger.error(f"No se pudo guardar el archivo en {save_path}: {e}")
+        print("=" * 70)
 
     def list_backends(self, output_format: str = 'text', save_path: Optional[str] = None) -> None:
         """Lista backends disponibles."""
         try:
             logger.info("Obteniendo lista de backends...")
-            backends = self.get_backends()
+            backends = self.provider.backends()
             if not backends:
                 logger.warning("No se encontraron backends.")
                 self._format_output([], output_format=output_format, save_path=save_path, title="Backends Disponibles")
@@ -308,16 +138,17 @@ class CoreMindQuantumManager:
             # Usar ThreadPoolExecutor para obtener propiedades en paralelo (puede acelerar)
             futures = {}
             with ThreadPoolExecutor(max_workers=5) as executor:
-                 for backend in backends:
-                      futures[executor.submit(self._get_backend_info, backend)] = backend.name()
+                for backend in backends:
+                    futures[executor.submit(self._get_backend_info, backend)] = backend.name()
 
-                 for future in as_completed(futures):
-                      backend_name = futures[future]
-                      try:
-                          info = future.result()
-                          if info: backend_data.append(info)
-                      except Exception as e_future:
-                           logger.warning(f"Error obteniendo info para backend {backend_name}: {e_future}")
+                for future in as_completed(futures):
+                    backend_name = futures[future]
+                    try:
+                        info = future.result()
+                        if info:
+                            backend_data.append(info)
+                    except Exception as e_future:
+                        logger.warning(f"Error obteniendo info para backend {backend_name}: {e_future}")
 
             backend_data = sorted(backend_data, key=lambda x: (x.get('Tipo') == 'Dispositivo Cuántico', x.get('Qubits', 0)), reverse=True)
 
@@ -332,7 +163,7 @@ class CoreMindQuantumManager:
             logger.error(f"Error al listar backends: {e}")
             if self.verbose: import traceback; logger.debug(traceback.format_exc())
 
-    def _get_backend_info(self, backend: IBMQBackend) -> Optional[Dict]:
+    def _get_backend_info(self, backend) -> Optional[Dict]:
         """Helper para obtener info de un backend (para ThreadPool)."""
         try:
             status = backend.status()
@@ -350,31 +181,31 @@ class CoreMindQuantumManager:
             if not config.simulator:
                 props = self._get_cached_properties(backend)
                 if props:
-                     t1s = [props.t1(q)*1e6 for q in range(config.n_qubits) if props.t1(q) is not None]
-                     t2s = [props.t2(q)*1e6 for q in range(config.n_qubits) if props.t2(q) is not None]
-                     if t1s: backend_info["T1 μs (Avg)"] = f"{np.mean(t1s):.1f}"
-                     if t2s: backend_info["T2 μs (Avg)"] = f"{np.mean(t2s):.1f}"
+                    t1s = [props.t1(q) * 1e6 for q in range(config.n_qubits) if props.t1(q) is not None]
+                    t2s = [props.t2(q) * 1e6 for q in range(config.n_qubits) if props.t2(q) is not None]
+                    if t1s: backend_info["T1 μs (Avg)"] = f"{np.mean(t1s):.1f}"
+                    if t2s: backend_info["T2 μs (Avg)"] = f"{np.mean(t2s):.1f}"
                 backend_info["Basis Gates"] = getattr(config, 'basis_gates', 'N/A')
             return backend_info
         except Exception as e:
-             logger.debug(f"Error interno obteniendo info para {backend.name()}: {e}")
-             return None # Devolver None si falla
+            logger.debug(f"Error interno obteniendo info para {backend.name()}: {e}")
+            return None  # Devolver None si falla
 
-    def _get_cached_properties(self, backend: IBMQBackend) -> Optional[Any]:
-         """Obtiene propiedades de backend desde cache o API."""
-         if backend.configuration().simulator: return None
-         cache_key = f"{backend.name()}_{datetime.now().strftime('%Y%m%d')}" # Cache diario
-         if cache_key not in self._backend_properties_cache:
-              try:
-                   logger.debug(f"Consultando propiedades de backend para {backend.name()}...")
-                   self._backend_properties_cache[cache_key] = backend.properties()
-              except Exception as e:
-                   logger.warning(f"No se pudieron obtener propiedades para {backend.name()}: {e}")
-                   self._backend_properties_cache[cache_key] = None # Guardar None para no reintentar hoy
-         return self._backend_properties_cache[cache_key]
+    def _get_cached_properties(self, backend) -> Optional[Any]:
+        """Obtiene propiedades de backend desde cache o API."""
+        if backend.configuration().simulator: return None
+        cache_key = f"{backend.name()}_{datetime.now().strftime('%Y%m%d')}"  # Cache diario
+        if cache_key not in self._backend_properties_cache:
+            try:
+                logger.debug(f"Consultando propiedades de backend para {backend.name()}...")
+                self._backend_properties_cache[cache_key] = backend.properties()
+            except Exception as e:
+                logger.warning(f"No se pudieron obtener propiedades para {backend.name()}: {e}")
+                self._backend_properties_cache[cache_key] = None  # Guardar None para no reintentar hoy
+        return self._backend_properties_cache[cache_key]
 
     def check_backend_status(self, backend_name: str, output_format: str = 'text',
-                           save_path: Optional[str] = None) -> None:
+                             save_path: Optional[str] = None) -> None:
         """Verifica el estado detallado de un backend."""
         try:
             logger.info(f"Obteniendo estado detallado para backend: {backend_name}...")
@@ -408,10 +239,9 @@ class CoreMindQuantumManager:
                         t1 = props.t1(q) * 1e6 if props.t1(q) is not None else None
                         t2 = props.t2(q) * 1e6 if props.t2(q) is not None else None
                         fr = props.frequency(q) / 1e9 if props.frequency(q) is not None else None
-                        # Manejar error de lectura que puede no estar disponible o tener otro nombre
                         readout_error_val = None
                         if hasattr(props, 'readout_error'): readout_error_val = props.readout_error(q)
-                        elif hasattr(props, 'readout_errors'): readout_error_val = props.readout_errors(q) # Nombre alternativo?
+                        elif hasattr(props, 'readout_errors'): readout_error_val = props.readout_errors(q)
 
                         re = readout_error_val if readout_error_val is not None else None
                         qubit_details.append([
@@ -427,48 +257,35 @@ class CoreMindQuantumManager:
                         if re: read_errs.append(re)
 
                     if HAS_TABULATE:
-                         qubit_details_table_str = tabulate(qubit_details, headers=headers_q, tablefmt="grid")
-                    else: # Fallback
-                         qubit_details_table_str = "\n".join([" | ".join(map(str, row)) for row in [headers_q] + qubit_details])
+                        qubit_details_table_str = tabulate(qubit_details, headers=headers_q, tablefmt="grid")
+                    else:  # Fallback
+                        qubit_details_table_str = "\n".join([" | ".join(map(str, row)) for row in [headers_q] + qubit_details])
 
                     if t1s: status_info["t1_avg_us"] = f"{np.mean(t1s):.1f}"
                     if t2s: status_info["t2_avg_us"] = f"{np.mean(t2s):.1f}"
                     if read_errs: status_info["readout_err_avg"] = f"{np.mean(read_errs):.5f}"
-                    # Guardar detalles por qubit para JSON/CSV
                     status_info["propiedades_por_qubit"] = {f"Q{i}": dict(zip(headers_q[1:], row[1:])) for i, row in enumerate(qubit_details)}
 
                 else:
                     status_info["propiedades_qubits"] = "No disponibles o vacías."
             else:
-                 status_info.pop('mapa_acoplamiento', None) # No aplica a simuladores
+                status_info.pop('mapa_acoplamiento', None)  # No aplica a simuladores
 
-
-            # Convertir coupling_map a lista de listas para JSON/CSV si existe
             if status_info.get('mapa_acoplamiento'):
-                 cmap_list = list(status_info['mapa_acoplamiento'])
-                 status_info['mapa_acoplamiento_str'] = str(cmap_list) # Para texto
-                 status_info['mapa_acoplamiento'] = cmap_list # Para JSON
+                cmap_list = list(status_info['mapa_acoplamiento'])
+                status_info['mapa_acoplamiento_str'] = str(cmap_list)  # Para texto
+                status_info['mapa_acoplamiento'] = cmap_list  # Para JSON
             else:
-                 status_info['mapa_acoplamiento_str'] = "N/A"
+                status_info['mapa_acoplamiento_str'] = "N/A"
 
-            # Usar el formateador general
             title = f"Estado Detallado de Backend: {backend_name}"
             self._format_output(status_info, output_format=output_format, save_path=save_path, title=title)
 
-            # Imprimir detalles por qubit y mapa si es formato texto
             if output_format == 'text':
                 if qubit_details_table_str:
                     print(f"\n--- Propiedades por Qubit ---\n{qubit_details_table_str}")
                 if status_info.get('mapa_acoplamiento'):
                     print(f"\n--- Mapa de Acoplamiento ---\n{status_info['mapa_acoplamiento_str']}")
-                    # Opcional: Graficar mapa de acoplamiento
-                    # try:
-                    #     fig_cmap = plot_gate_map(backend)
-                    #     if save_path: fig_cmap.savefig(f"{os.path.splitext(save_path)[0]}_cmap.png")
-                    #     else: plt.show()
-                    #     plt.close(fig_cmap)
-                    # except Exception as e_cmap: logger.warning(f"No se pudo graficar mapa de acoplamiento: {e_cmap}")
-
 
         except Exception as e:
             logger.error(f"Error al verificar estado de {backend_name}: {str(e)}")
@@ -478,17 +295,15 @@ class CoreMindQuantumManager:
         """Construye un circuito cuántico según el tipo."""
         logger.debug(f"Construyendo circuito tipo '{circuit_type}' para {num_qubits} qubits...")
 
-        # Validaciones comunes
         if circuit_type not in ['custom', 'vqe_ansatz'] and (num_qubits is None or num_qubits <= 0):
-             raise ValueError(f"Se requiere --qubits > 0 para el circuito '{circuit_type}'.")
+            raise ValueError(f"Se requiere --qubits > 0 para el circuito '{circuit_type}'.")
         if circuit_type in ['bell', 'ghz', 'grover', 'phase_est'] and num_qubits < 2:
-             raise ValueError(f"Circuito '{circuit_type}' requiere al menos 2 qubits.")
+            raise ValueError(f"Circuito '{circuit_type}' requiere al menos 2 qubits.")
 
-        # Construcción
         qc = None
         if circuit_type == 'bell':
             qc = QuantumCircuit(2, 2, name="Bell")
-            qc.h(0); qc.cx(0, 1); qc.measure([0,1], [0,1])
+            qc.h(0); qc.cx(0, 1); qc.measure([0, 1], [0, 1])
         elif circuit_type == 'ghz':
             qc = QuantumCircuit(num_qubits, num_qubits, name=f"GHZ_{num_qubits}")
             qc.h(0)
@@ -496,43 +311,38 @@ class CoreMindQuantumManager:
             qc.measure(range(num_qubits), range(num_qubits))
         elif circuit_type == 'qft':
             qc = QuantumCircuit(num_qubits, num_qubits, name=f"QFT_{num_qubits}")
-            qc.h(range(num_qubits)) # Superposición inicial
+            qc.h(range(num_qubits))  # Superposición inicial
             qc.append(QFT(num_qubits, inverse=False, do_swaps=True), range(num_qubits))
             qc.measure(range(num_qubits), range(num_qubits))
         elif circuit_type == 'grover':
             target_state_str = '1' * num_qubits
             oracle = QuantumCircuit(num_qubits, name='Oracle')
-            # Z multi-controlada (marca |1...1>)
             oracle.h(num_qubits - 1)
-            oracle.mcx(list(range(num_qubits - 1)), num_qubits - 1) # Toffoli multi-controlado
+            oracle.mcx(list(range(num_qubits - 1)), num_qubits - 1)  # Toffoli multi-controlado
             oracle.h(num_qubits - 1)
-            # Inversión de fase con X alrededor
-            oracle_full = QuantumCircuit(num_qubits)
-            oracle_full.x(range(num_qubits))
-            oracle_full.append(oracle, range(num_qubits))
-            oracle_full.x(range(num_qubits))
 
-            grover_op = GroverOperator(oracle_full, insert_barriers=True)
+            grover_op = GroverOperator(oracle, insert_barriers=True)
             iterations = GroverOperator.optimal_num_iterations(num_qubits=num_qubits)
             logger.info(f"Construyendo Grover para buscar |{target_state_str}⟩ con {iterations} iteraciones.")
             qc = QuantumCircuit(num_qubits, num_qubits, name=f"Grover_{num_qubits}")
             qc.h(range(num_qubits))
-            qc.append(grover_op.power(iterations), range(num_qubits))
-            qc.measure(range(num_qubits), range(num_qubits))
+            qc.append(grover_op.power(iterations), range(num_qubits - 1))
+ 
+qc.measure(range(num_qubits), range(num_qubits))
         elif circuit_type == 'vqe':
-            if not HAS_QISKIT_ALGORITHMS: raise ImportError("VQE requiere qiskit.algorithms.")
-            # Devolvemos solo el ansatz. La ejecución VQE es más compleja.
             logger.info("Generando ansatz EfficientSU2 para VQE (ejecución completa no soportada en esta acción).")
             qc = EfficientSU2(num_qubits=num_qubits, reps=2, entanglement='linear').decompose()
             qc.name = f"VQE_Ansatz_{num_qubits}"
-            # VQE no mide en el ansatz base, la medición depende del observable
         elif circuit_type in ['su2', 'zz', 'qv']:
-             if circuit_type == 'su2': qc_lib = EfficientSU2(num_qubits, reps=3, entanglement='linear')
-             elif circuit_type == 'zz': qc_lib = ZZFeatureMap(feature_dimension=num_qubits, reps=2, entanglement='linear')
-             else: qc_lib = QuantumVolume(num_qubits, seed=int(time.time())) # Seed aleatorio
-             qc = qc_lib.decompose()
-             qc.measure_all()
-             qc.name = f"{circuit_type.upper()}_{num_qubits}"
+            if circuit_type == 'su2':
+                qc_lib = EfficientSU2(num_qubits, reps=3, entanglement='linear')
+            elif circuit_type == 'zz':
+                qc_lib = ZZFeatureMap(feature_dimension=num_qubits, reps=2, entanglement='linear')
+            else:
+                qc_lib = QuantumVolume(num_qubits, seed=int(time.time()))  # Seed aleatorio
+            qc = qc_lib.decompose()
+            qc.measure_all()
+            qc.name = f"{circuit_type.upper()}_{num_qubits}"
         elif circuit_type == 'custom':
             if not circuit_file or not os.path.exists(circuit_file):
                 raise ValueError("Para 'custom', se necesita --circuit-file con ruta válida.")
@@ -553,9 +363,8 @@ class CoreMindQuantumManager:
 
     def execute_circuit(self, backend_name: str, circuit_type: str, num_qubits: int, shots: int,
                         add_noise: bool = False, optimization_level: int = 1,
-                        circuit_file: Optional[str] = None) -> Optional[Tuple[IBMQJob, Result]]:
+                        circuit_file: Optional[str] = None) -> Optional[Tuple[IBMJob, Result]]:
         """Ejecuta un circuito cuántico."""
-        if not HAS_QISKIT: raise RuntimeError("Qiskit no instalado.")
         try:
             logger.info(f"Preparando ejecución: Circuito='{circuit_type}', Backend='{backend_name}', Shots={shots}, Ruido={add_noise}, Opt={optimization_level}")
             backend = self.provider.get_backend(backend_name)
@@ -568,39 +377,33 @@ class CoreMindQuantumManager:
                 logger.info("Intentando generar modelo de ruido desde backend real...")
                 real_backend = None
                 try:
-                    # Buscar un backend real calibrado con suficientes qubits
                     real_backends = self.provider.backends(simulator=False, operational=True, min_qubits=circuit.num_qubits)
                     if real_backends:
-                        # Ordenar por menor cola? O qubit count más cercano? Tomar el primero por ahora.
                         real_backend = min(real_backends, key=lambda b: b.status().pending_jobs)
                         logger.info(f"Usando propiedades de '{real_backend.name()}' para modelo de ruido.")
                         properties = self._get_cached_properties(real_backend)
                         if properties:
-                             noise_model_instance = NoiseModel.from_backend(properties)
-                             logger.info("✓ Modelo de ruido generado desde backend real.")
-                        else: logger.warning("No se pudieron obtener propiedades del backend real.")
-                    else: logger.warning("No se encontró backend real adecuado para generar modelo de ruido.")
+                            noise_model_instance = NoiseModel.from_backend(properties)
+                            logger.info("✓ Modelo de ruido generado desde backend real.")
+                        else:
+                            logger.warning("No se pudieron obtener propiedades del backend real.")
+                    else:
+                        logger.warning("No se encontró backend real adecuado para generar modelo de ruido.")
                 except Exception as e_noise:
-                     logger.warning(f"Error generando modelo de ruido: {e_noise}. Ejecutando sin ruido.")
+                    logger.warning(f"Error generando modelo de ruido: {e_noise}. Ejecutando sin ruido.")
             elif add_noise and not is_simulator:
-                 logger.warning("La opción --noise-model solo aplica a simuladores Aer. Ejecutando en hardware real (con su ruido inherente).")
-
+                logger.warning("La opción --noise-model solo aplica a simuladores Aer. Ejecutando en hardware real (con su ruido inherente).")
 
             logger.info(f"Transpilando circuito '{circuit.name}' para '{backend_name}' (opt={optimization_level})...")
-            # Usar un layout inicial si es posible para mejorar transpilación?
             transpiled_circuit = transpile(circuit, backend=backend, optimization_level=optimization_level)
             logger.info(f"Circuito transpilado: Profundidad={transpiled_circuit.depth()}, Operaciones={transpiled_circuit.count_ops()}")
-            if self.verbose: logger.debug(f"Circuito transpilado (QASM head):\n{transpiled_circuit.qasm(formatted=True).splitlines()[:15]}")
-
 
             logger.info(f"Enviando trabajo a '{backend_name}' (shots={shots})...")
-            # Construir payload para execute
             execute_options = {'shots': shots}
-            if noise_model_instance and 'aer_simulator' in backend.name(): # Asegurar que es simulador Aer
-                 execute_options['noise_model'] = noise_model_instance
-            # Añadir memoria si el backend lo soporta? Para ver resultados shot a shot
+            if noise_model_instance and 'aer_simulator' in backend.name():
+                execute_options['noise_model'] = noise_model_instance
             if getattr(backend.configuration(), 'memory', False):
-                 execute_options['memory'] = True
+                execute_options['memory'] = True
 
             job = execute(transpiled_circuit, backend, **execute_options)
             job_id = job.job_id()
@@ -608,41 +411,40 @@ class CoreMindQuantumManager:
 
             logger.info("Monitoreando trabajo (puede tardar)...")
             start_time = time.time()
-            # Usar job_monitor con un timeout parcial si se especificó --timeout global
-            # job_monitor no acepta timeout directamente, lo hacemos manualmente
             while job.status() not in [JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED]:
-                 current_status = job.status()
-                 elapsed_time = time.time() - start_time
-                 logger.info(f"  Estado actual: {current_status.name} (Tiempo transcurrido: {elapsed_time:.1f}s)")
-                 if elapsed_time > self.timeout:
-                      logger.warning(f"Timeout ({self.timeout}s) alcanzado esperando el trabajo {job_id}. Puedes verificar estado/resultados más tarde.")
-                      # ¿Cancelar el trabajo? Podría estar cerca de terminar. Por ahora solo salimos del monitor.
-                      return job, None # Devolver job pero no resultado
-                 time.sleep(10) # Esperar 10s entre chequeos
+                current_status = job.status()
+                elapsed_time = time.time() - start_time
+                logger.info(f"  Estado actual: {current_status.name} (Tiempo transcurrido: {elapsed_time:.1f}s)")
+                if elapsed_time > self.timeout:
+                    logger.warning(f"Timeout ({self.timeout}s) alcanzado esperando el trabajo {job_id}. Puedes verificar estado/resultados más tarde.")
+                    return job, None  # Devolver job pero no resultado
+                time.sleep(10)  # Esperar 10s entre chequeos
 
             final_status = job.status()
             logger.info(f"Trabajo {job_id} finalizado con estado: {final_status.name}")
 
             if final_status == JobStatus.DONE:
-                 logger.info("Obteniendo resultados...")
-                 result = job.result()
-                 logger.info(f"✓ Ejecución completada exitosamente.")
-                 return job, result
+                logger.info("Obteniendo resultados...")
+                result = job.result()
+                logger.info(f"✓ Ejecución completada exitosamente.")
+                return job, result
             else:
-                 logger.error(f"El trabajo {job_id} falló o fue cancelado. Mensaje: {job.error_message()}")
-                 return job, None # Devolver job pero no resultado
+                logger.error(f"El trabajo {job_id} falló o fue cancelado. Mensaje: {job.error_message()}")
+                return job, None  # Devolver job pero no resultado
 
-        # Manejar excepciones específicas de Qiskit y generales
-        except IBMQJobApiError as e: logger.error(f"Error API (trabajo): {e}")
-        except IBMQProviderError as e: logger.error(f"Error proveedor (backend '{backend_name}'): {e}")
-        except IBMQAccountError as e: logger.error(f"Error cuenta IBMQ: {e}")
-        except ValueError as e: logger.error(f"Error en valor/parámetro: {e}")
-        except ImportError as e: logger.error(f"Error de importación (falta módulo?): {e}")
+        except IBMJobApiError as e:
+            logger.error(f"Error API (trabajo): {e}")
+        except IBMProviderError as e:
+            logger.error(f"Error proveedor (backend '{backend_name}'): {e}")
+        except IBMAccountError as e:
+            logger.error(f"Error cuenta IBMQ: {e}")
+        except ValueError as e:
+            logger.error(f"Error en valor/parámetro: {e}")
         except Exception as e:
             logger.error(f"Error inesperado durante ejecución: {type(e).__name__} - {e}")
             if self.verbose: import traceback; logger.debug(traceback.format_exc())
 
-        return None # Falló la ejecución
+        return None  # Falló la ejecución
 
     def get_job_status(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Obtiene el estado de un trabajo específico."""
@@ -655,49 +457,48 @@ class CoreMindQuantumManager:
                 "job_id": job.job_id(),
                 "backend": backend_name,
                 "status": status.name if status else "Desconocido",
-                "mensaje_estado": job_status_message(status) if status else "N/A",
+                "mensaje_estado": job.status_msg if status else "N/A",
                 "tiempo_creacion": job.creation_date().isoformat() if job.creation_date() else "N/A",
                 "tiempo_por_paso": job.time_per_step() if job.time_per_step() else {}
             }
             if hasattr(job, 'error_message') and job.error_message():
-                 info["mensaje_error"] = job.error_message()
+                info["mensaje_error"] = job.error_message()
             logger.info(f"Estado obtenido para {job_id}: {info['status']}")
             return info
-        except IBMQJobApiError as e: logger.error(f"Error API recuperando trabajo {job_id}: {e}")
-        except Exception as e: logger.error(f"Error inesperado recuperando trabajo {job_id}: {e}")
+        except IBMJobApiError as e:
+            logger.error(f"Error API recuperando trabajo {job_id}: {e}")
+        except Exception as e:
+            logger.error(f"Error inesperado recuperando trabajo {job_id}: {e}")
         return None
 
     def list_jobs(self, limit: int = 10, backend_name: Optional[str] = None) -> List[Dict[str, Any]]:
-         """Lista trabajos recientes, opcionalmente filtrando por backend."""
-         logger.info(f"Listando los últimos {limit} trabajos" + (f" para backend '{backend_name}'." if backend_name else "."))
-         try:
-              job_list = self.provider.jobs(limit=limit, backend_name=backend_name, descending=True)
-              jobs_data = []
-              for job in job_list:
-                   status = job.status()
-                   data = {
-                       "ID Trabajo": job.job_id(),
-                       "Backend": job.backend().name() if job.backend() else "N/A",
-                       "Estado": status.name if status else "N/A",
-                       "Fecha Creación": job.creation_date().isoformat() if job.creation_date() else "N/A",
-                       "Tags": job.tags() if hasattr(job, 'tags') else []
-                   }
-                   jobs_data.append(data)
-              logger.info(f"Encontrados {len(jobs_data)} trabajos.")
-              return jobs_data
-         except Exception as e:
-              logger.error(f"Error al listar trabajos: {e}")
-              return []
+        """Lista trabajos recientes, opcionalmente filtrando por backend."""
+        logger.info(f"Listando los últimos {limit} trabajos" + (f" para backend '{backend_name}'." if backend_name else "."))
+        try:
+            job_list = self.provider.jobs(limit=limit, backend_name=backend_name, descending=True)
+            jobs_data = []
+            for job in job_list:
+                status = job.status()
+                data = {
+                    "ID Trabajo": job.job_id(),
+                    "Backend": job.backend().name() if job.backend() else "N/A",
+                    "Estado": status.name if status else "N/A",
+                    "Fecha Creación": job.creation_date().isoformat() if job.creation_date() else "N/A",
+                    "Tags": job.tags() if hasattr(job, 'tags') else []
+                }
+                jobs_data.append(data)
+            logger.info(f"Encontrados {len(jobs_data)} trabajos.")
+            return jobs_data
+        except Exception as e:
+            logger.error(f"Error al listar trabajos: {e}")
+            return []
 
     def get_job_results(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Obtiene y formatea resultados de un trabajo completado."""
-        # Usar cache si el resultado ya está
         if job_id in self._results_cache:
-             logger.info(f"Recuperando resultados cacheados para trabajo ID: {job_id}")
-             # Necesitamos devolverlo en el formato esperado, no solo el objeto Result
-             result_obj = self._results_cache[job_id]
-             # Re-procesar para asegurar formato consistente
-             return self._process_result_object(result_obj, job_id)
+            logger.info(f"Recuperando resultados cacheados para trabajo ID: {job_id}")
+            result_obj = self._results_cache[job_id]
+            return self._process_result_object(result_obj, job_id)
 
         logger.info(f"Obteniendo resultados para el trabajo ID: {job_id}")
         try:
@@ -706,60 +507,58 @@ class CoreMindQuantumManager:
 
             if status == JobStatus.DONE:
                 logger.info("Trabajo completado. Recuperando objeto Result...")
-                # Añadir timeout a la recuperación de resultados
                 result = job.result(timeout=self.timeout)
                 logger.info("✓ Resultados obtenidos.")
-                # Procesar y guardar en cache
                 results_data = self._process_result_object(result, job_id, job.backend().name())
-                self._results_cache[job_id] = result # Guardar objeto Result crudo en cache
+                self._results_cache[job_id] = result  # Guardar objeto Result crudo en cache
                 return results_data
             elif status in [JobStatus.ERROR, JobStatus.CANCELLED]:
-                 logger.error(f"El trabajo {job_id} finalizó con estado {status.name}. Error: {job.error_message()}")
-                 return {"job_id": job_id, "status": status.name, "error": job.error_message()}
+                logger.error(f"El trabajo {job_id} finalizó con estado {status.name}. Error: {job.error_message()}")
+                return {"job_id": job_id, "status": status.name, "error": job.error_message()}
             else:
-                 logger.warning(f"El trabajo {job_id} aún no ha terminado (Estado: {status.name}).")
-                 return {"job_id": job_id, "status": status.name, "mensaje": "Trabajo aún no completado."}
+                logger.warning(f"El trabajo {job_id} aún no ha terminado (Estado: {status.name}).")
+                return {"job_id": job_id, "status": status.name, "mensaje": "Trabajo aún no completado."}
 
-        except IBMQJobApiError as e: logger.error(f"Error API obteniendo resultados de {job_id}: {e}")
-        except TimeoutError: logger.error(f"Timeout ({self.timeout}s) esperando resultados de {job_id}.")
-        except Exception as e: logger.error(f"Error inesperado obteniendo resultados de {job_id}: {e}")
+        except IBMJobApiError as e:
+            logger.error(f"Error API obteniendo resultados de {job_id}: {e}")
+        except Exception as e:
+            logger.error(f"Error inesperado obteniendo resultados de {job_id}: {e}")
         return None
 
-    def _process_result_object(self, result: Result, job_id: str, backend_name: Optional[str]=None) -> Dict[str, Any]:
-         """Procesa un objeto Result de Qiskit a un diccionario formateado."""
-         results_data = {
-             "job_id": job_id,
-             "backend": backend_name or result.backend_name,
-             "status": "DONE", # Asumimos que llegó aquí porque estaba DONE
-             "exito": result.success,
-             "fecha_ejecucion": result.date.isoformat(),
-             "tiempo_ejecucion_backend_s": getattr(result, 'time_taken', None),
-             "shots": result.shots,
-             "resultados_experimentos": []
-         }
-         for i, exp_result in enumerate(result.results):
-              exp_data = {"experimento": i}
-              if hasattr(exp_result, 'header') and hasattr(exp_result.header, 'name'):
-                   exp_data["nombre_circuito"] = exp_result.header.name
-              if hasattr(exp_result.data, 'counts'):
-                   exp_data["counts"] = dict(exp_result.data.counts)
-              if hasattr(exp_result.data, 'statevector'):
-                   sv = exp_result.data.statevector
-                   # Guardar como lista de tuplas (real, imag) para JSON
-                   exp_data["statevector"] = [(c.real, c.imag) for c in sv.data]
-              if hasattr(exp_result.data, 'memory'):
-                   mem = exp_result.data.memory
-                   exp_data["memory_counts"] = len(mem) if mem else 0
-                   exp_data["memory_preview"] = mem[:min(len(mem), 5)] if mem else [] # Preview corto
+    def _process_result_object(self, result: Result, job_id: str, backend_name: Optional[str] = None) -> Dict[str, Any]:
+        """Procesa un objeto Result de Qiskit a un diccionario formateado."""
+        results_data = {
+            "job_id": job_id,
+            "backend": backend_name or result.backend_name,
+            "status": "DONE",  # Asumimos que llegó aquí porque estaba DONE
+            "exito": result.success,
+            "fecha_ejecucion": result.date.isoformat(),
+            "tiempo_ejecucion_backend_s": getattr(result, 'time_taken', None),
+            "shots": result.shots,
+            "resultados_experimentos": []
+        }
+        for i, exp_result in enumerate(result.results):
+            exp_data = {"experimento": i}
+            if hasattr(exp_result, 'header') and hasattr(exp_result.header, 'name'):
+                exp_data["nombre_circuito"] = exp_result.header.name
+            if hasattr(exp_result.data, 'counts'):
+                exp_data["counts"] = dict(exp_result.data.counts)
+            if hasattr(exp_result.data, 'statevector'):
+                sv = exp_result.data.statevector
+                exp_data["statevector"] = [(c.real, c.imag) for c in sv.data]
+            if hasattr(exp_result.data, 'memory'):
+                mem = exp_result.data.memory
+                exp_data["memory_counts"] = len(mem) if mem else 0
+                exp_data["memory_preview"] = mem[:min(len(mem), 5)] if mem else []
 
-              results_data["resultados_experimentos"].append(exp_data)
-         return results_data
-
+            results_data["resultados_experimentos"].append(exp_data)
+        return results_data
 
     def plot_results(self, results_data: Dict[str, Any], save_path_prefix: Optional[str] = None) -> None:
         """Genera gráficas a partir de los datos de resultados."""
-        if not HAS_QISKIT: logger.warning("Qiskit no instalado, no se pueden generar gráficas."); return
-        if not results_data or not results_data.get("resultados_experimentos"): logger.warning("No hay datos de resultados para graficar."); return
+        if not results_data or not results_data.get("resultados_experimentos"):
+            logger.warning("No hay datos de resultados para graficar.")
+            return
 
         logger.info("Generando gráficas de resultados...")
         job_id_short = results_data.get("job_id", "unknown_job")[:8]
@@ -775,12 +574,13 @@ class CoreMindQuantumManager:
                     fig_hist = plot_histogram(exp_result_data["counts"], title=f"Histograma - {exp_name} ({job_id_short})", figsize=(10, 6))
                     figs_created.append(fig_hist)
                     if plot_filename_base:
-                         filename = f"{plot_filename_base}_hist.png"
-                         fig_hist.savefig(filename)
-                         logger.info(f"Histograma guardado en {filename}")
+                        filename = f"{plot_filename_base}_hist.png"
+                        fig_hist.savefig(filename)
+                        logger.info(f"Histograma guardado en {filename}")
                     else:
-                         plt.show(block=False) # No bloquear si se muestran varias
-                except Exception as e_hist: logger.error(f"Error generando histograma para {exp_name}: {e_hist}")
+                        plt.show(block=False)  # No bloquear si se muestran varias
+                except Exception as e_hist:
+                    logger.error(f"Error generando histograma para {exp_name}: {e_hist}")
 
             # Graficar estado
             if "statevector" in exp_result_data:
@@ -790,31 +590,35 @@ class CoreMindQuantumManager:
                     state = Statevector(sv_complex)
                     num_qubits = state.num_qubits
 
-                    if num_qubits <= 3 : # Bloch
-                         fig_bloch = plot_bloch_multivector(state, title=f"Esfera de Bloch - {exp_name} ({job_id_short})")
-                         figs_created.append(fig_bloch)
-                         if plot_filename_base:
-                              filename = f"{plot_filename_base}_bloch.png"
-                              fig_bloch.savefig(filename)
-                              logger.info(f"Esfera de Bloch guardada en {filename}")
-                         else: plt.show(block=False)
-                    else: # City
-                         fig_city = plot_state_city(state, title=f"State City - {exp_name} ({job_id_short})", figsize=(12, 8))
-                         figs_created.append(fig_city)
-                         if plot_filename_base:
-                              filename = f"{plot_filename_base}_city.png"
-                              fig_city.savefig(filename)
-                              logger.info(f"State City guardado en {filename}")
-                         else: plt.show(block=False)
+                    if num_qubits <= 3:  # Bloch
+                        fig_bloch = plot_bloch_multivector(state, title=f"Esfera de Bloch - {exp_name} ({job_id_short})")
+                        figs_created.append(fig_bloch)
+                        if plot_filename_base:
+                            filename = f"{plot_filename_base}_bloch.png"
+                            fig_bloch.savefig(filename)
+                            logger.info(f"Esfera de Bloch guardada en {filename}")
+                        else:
+                            plt.show(block=False)
+                    else:  # City
+                        fig_city = plot_state_city(state, title=f"State City - {exp_name} ({job_id_short})", figsize=(12, 8))
+                        figs_created.append(fig_city)
+                        if plot_filename_base:
+                            filename = f"{plot_filename_base}_city.png"
+                            fig_city.savefig(filename)
+                            logger.info(f"State City guardado en {filename}")
+                        else:
+                            plt.show(block=False)
 
-                except Exception as e_state: logger.error(f"Error graficando statevector para {exp_name}: {e_state}")
+                except Exception as e_state:
+                    logger.error(f"Error graficando statevector para {exp_name}: {e_state}")
 
         # Mostrar todas las figuras al final si no se guardaron
         if not save_path_prefix and figs_created:
-             logger.info("Mostrando gráficas generadas...")
-             plt.show() # Muestra todas las figuras no bloqueantes
+            logger.info("Mostrando gráficas generadas...")
+            plt.show()  # Muestra todas las figuras no bloqueantes
         # Cerrar figuras para liberar memoria
-        for fig in figs_created: plt.close(fig)
+        for fig in figs_created:
+            plt.close(fig)
 
 
 # --- Función Principal y Manejo de Argumentos ---
@@ -822,7 +626,7 @@ def main():
     # --- Configuración de Argparse ---
     parser = argparse.ArgumentParser(
         description="CoreMind Quantum CLI v2.0.1 - Interfaz para IBM Quantum.",
-        formatter_class=argparse.RawTextHelpFormatter, # Para formato en help
+        formatter_class=argparse.RawTextHelpFormatter,  # Para formato en help
         epilog="""Ejemplos:
   Listar backends operativos con >4 qubits en JSON:
     python %(prog)s -t MI_TOKEN -a list --output json --min-qubits 5 --operational
@@ -848,6 +652,7 @@ def main():
                                 "  execute - Ejecuta un circuito cuántico.\n"
                                 "  jobs    - Lista trabajos recientes.\n"
                                 "  results - Obtiene resultados de un trabajo.\n"
+                                "  custom  -
                                 "  custom  - (No implementado) Acción personalizada.")
 
     # Grupo de Argumentos Opcionales Generales
@@ -866,7 +671,7 @@ def main():
                             choices=['bell', 'ghz', 'qft', 'grover', 'vqe', 'su2', 'zz', 'qv', 'custom'],
                             help="Tipo de circuito a ejecutar (o 'custom' con --circuit-file).")
     exec_group.add_argument("--circuit-file", help="Ruta al archivo QASM v2.0 para --circuit-type 'custom'.")
-    exec_group.add_argument("--qubits", type=int, default=None, # Default None para inferir de custom o requerir
+    exec_group.add_argument("--qubits", type=int, default=None,  # Default None para inferir de custom o requerir
                             help="Número de qubits para circuitos generados (requerido si no es 'custom').")
     exec_group.add_argument("--shots", type=int, default=1024, help="Número de shots (repeticiones).")
     exec_group.add_argument("--noise-model", type=lambda x: (str(x).lower() == 'true'), default=False,
@@ -875,7 +680,6 @@ def main():
                             help="Nivel de optimización de transpilación Qiskit [0-3].")
     exec_group.add_argument("--plot-results", action='store_true',
                             help="Generar y guardar gráficas para la acción 'execute' y 'results'.")
-
 
     # Grupo de Argumentos para list_jobs
     jobs_group = parser.add_argument_group('Argumentos para Acción \'jobs\'')
@@ -893,12 +697,11 @@ def main():
         if args.circuit_type == 'custom':
             if not args.circuit_file: parser.error("--circuit-type 'custom' requiere --circuit-file.")
         elif args.qubits is None or args.qubits <= 0:
-             parser.error(f"--action 'execute' con circuit-type '{args.circuit_type}' requiere --qubits > 0.")
+            parser.error(f"--action 'execute' con circuit-type '{args.circuit_type}' requiere --qubits > 0.")
     elif args.action == 'results':
         if not args.job_id: parser.error("--action 'results' requiere --job-id.")
     elif args.action == 'jobs' and args.backend:
-         logger.info(f"Filtrando trabajos por backend: {args.backend}")
-         # Validación extra si se quiere verificar que el backend existe? Podría ralentizar.
+        logger.info(f"Filtrando trabajos por backend: {args.backend}")
 
     if args.output == 'plot' and args.action != 'list':
         logger.warning("--output 'plot' solo está implementado para --action 'list'. Usando 'text' en su lugar.")
@@ -911,21 +714,20 @@ def main():
     if args.save_path and args.plot_results and args.output != 'plot':
         logger.info(f"--save-path ('{args.save_path}') guarda la salida {args.output}. Las gráficas de --plot-results se guardarán con ese prefijo.")
 
-
     # --- Ejecución ---
     try:
         manager = CoreMindQuantumManager(token=args.token, verbose=args.verbose, timeout=args.timeout)
 
         if args.action == 'list':
-            manager.list_backends(output_format=args.output, save_path=args.save_path) # 'plot' se maneja dentro
+            manager.list_backends(output_format=args.output, save_path=args.save_path)  # 'plot' se maneja dentro
 
         elif args.action == 'status':
             if args.job_id:
-                 job_status_info = manager.get_job_status(args.job_id)
-                 if job_status_info:
-                      manager._format_output(job_status_info, output_format=args.output, save_path=args.save_path, title=f"Estado Trabajo {args.job_id}")
+                job_status_info = manager.get_job_status(args.job_id)
+                if job_status_info:
+                    manager._format_output(job_status_info, output_format=args.output, save_path=args.save_path, title=f"Estado Trabajo {args.job_id}")
             elif args.backend:
-                 manager.check_backend_status(args.backend, output_format=args.output, save_path=args.save_path)
+                manager.check_backend_status(args.backend, output_format=args.output, save_path=args.save_path)
 
         elif args.action == 'execute':
             exec_output = manager.execute_circuit(
@@ -938,40 +740,36 @@ def main():
                 circuit_file=args.circuit_file
             )
             if exec_output:
-                 job, result = exec_output
-                 job_id = job.job_id()
-                 if result: # Si la ejecución terminó y devolvió resultado
-                      logger.info(f"Ejecución completada (Job ID: {job_id}). Éxito: {result.success}")
-                      results_data = manager._process_result_object(result, job_id, args.backend) # Usar helper interno
-                      # Mostrar/Guardar resultados en formato pedido
-                      manager._format_output(results_data, output_format=args.output, save_path=args.save_path, title=f"Resultados Ejecución {job_id}")
-                      # Graficar si se pide
-                      if args.plot_results:
-                           plot_save_prefix = os.path.splitext(args.save_path)[0] if args.save_path else f"job_{job_id}"
-                           manager.plot_results(results_data, save_path_prefix=plot_save_prefix)
-                 else: # Si hubo timeout o error devuelto por execute_circuit
-                      logger.warning(f"La ejecución del trabajo {job_id} no produjo resultados finales dentro del timeout/límite.")
-            else: # Si execute_circuit falló antes de devolver job/result
-                 logger.error(f"La ejecución en {args.backend} falló.")
-
+                job, result = exec_output
+                job_id = job.job_id()
+                if result:  # Si la ejecución terminó y devolvió resultado
+                    logger.info(f"Ejecución completada (Job ID: {job_id}). Éxito: {result.success}")
+                    results_data = manager._process_result_object(result, job_id, args.backend)  # Usar helper interno
+                    # Mostrar/Guardar resultados en formato pedido
+                    manager._format_output(results_data, output_format=args.output, save_path=args.save_path, title=f"Resultados Ejecución {job_id}")
+                    # Graficar si se pide
+                    if args.plot_results:
+                        plot_save_prefix = os.path.splitext(args.save_path)[0] if args.save_path else f"job_{job_id}"
+                        manager.plot_results(results_data, save_path_prefix=plot_save_prefix)
+                else:  # Si hubo timeout o error devuelto por execute_circuit
+                    logger.warning(f"La ejecución del trabajo {job_id} no produjo resultados finales dentro del timeout/límite.")
+            else:  # Si execute_circuit falló antes de devolver job/result
+                logger.error(f"La ejecución en {args.backend} falló.")
 
         elif args.action == 'jobs':
             jobs_list = manager.list_jobs(limit=args.limit, backend_name=args.backend)
             if jobs_list:
-                 headers = ["ID Trabajo", "Backend", "Estado", "Fecha Creación", "Tags"]
-                 manager._format_output(jobs_list, headers=headers, output_format=args.output, save_path=args.save_path, title=f"Últimos {args.limit} Trabajos")
+                headers = ["ID Trabajo", "Backend", "Estado", "Fecha Creación", "Tags"]
+                manager._format_output(jobs_list, headers=headers, output_format=args.output, save_path=args.save_path, title=f"Últimos {args.limit} Trabajos")
 
         elif args.action == 'results':
             results_data = manager.get_job_results(args.job_id)
             if results_data and results_data.get('status') == 'DONE':
-                 manager._format_output(results_data, output_format=args.output, save_path=args.save_path, title=f"Resultados Trabajo {args.job_id}")
-                 # Graficar si se pide
-                 if args.plot_results:
-                      plot_save_prefix = os.path.splitext(args.save_path)[0] if args.save_path else f"job_{args.job_id}"
-                      manager.plot_results(results_data, save_path_prefix=plot_save_prefix)
-            elif results_data: # Si job existe pero no está DONE
-                 manager._format_output(results_data, output_format=args.output, save_path=args.save_path, title=f"Estado Trabajo {args.job_id}")
-
+                manager._format_output(results_data, output_format=args.output, save_path=args.save_path, title=f"Resultados Trabajo {args.job_id}")
+                # Graficar si se pide
+                if args.plot_results:
+                    plot_save_prefix = os.path.splitext(args.save_path)[0] if args.save_path else f"job_{args.job_id}"
+                    manager.plot_results(results_data, save_path_prefix=plot_save_prefix)
 
         elif args.action == 'custom':
             logger.warning("Acción 'custom' no implementada.")
@@ -981,8 +779,9 @@ def main():
         logger.exception(f"Error fatal en la ejecución de la CLI.")
         sys.exit(1)
     finally:
-         # Asegurar que los plots se cierren
-         plt.close('all')
+        # Asegurar que los plots se cierren
+        plt.close('all')
+
 
 if __name__ == "__main__":
     main()
