@@ -9,7 +9,7 @@ for the file.
 
 # Proyecto Cuadrante: Redes y Circuito Cuántico
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache2.0-yellow.svg)](https://opensource.org/licenses[![License: MIT](https://img.shields.io/badge/License-Apache2.0-yellow.svg)](https://opensource.org/licenses/Apache2.0)
+![License: Apache 2.0](https://img.shields.io/badge/License-Apache2.0-yellow.svg)](https://opensource.org/licenses[![License: Apache2.0](https://img.shields.io/badge/License-Apache2.0-yellow.svg)](https://opensource.org/licenses/Apache2.0)
 ![Project Status](https://img.shields.io/badge/Project%20Status-In%20Progress-blue)
 ![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)
 [![Build Status](https://github.com/jako/QuoreMind/actions/workflows/ci.yml/badge.svg)](https://github.com/jako/QuoreMind/actions/workflows/ci.yml)
