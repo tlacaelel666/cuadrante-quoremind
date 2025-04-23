@@ -391,10 +391,6 @@ def calculate_cosines(entropy: float, env_value: float) -> Tuple[float, float, f
 
 class BayesLogic:
     """
-    Clase para implementar lógica bayesiana utilizada en los cálculos
-"""
-class BayesLogic:
-    """
     Clase para calcular probabilidades y seleccionar acciones basadas en el teorema de Bayes.
     
     Provee métodos para:
@@ -456,13 +452,216 @@ class BayesLogic:
     # Métodos adicionales de lógica bayesiana se implementarían aquí
 
 
-class StatisticalAnalysis:
+   
+class QuantumBayesMahalanobis(BayesLogic):
     """
-    Clase para realizar análisis estadísticos utilizados en los cálculos de FFTBayesIntegrator.
+    Clase que combina la lógica de Bayes con el cálculo de la distancia de Mahalanobis
+    aplicada a estados cuánticos, permitiendo proyecciones vectorizadas e inferencias
+    de coherencia/entropía.
     """
     def __init__(self):
-        pass
-        
+        """
+        Constructor que inicializa el estimador de covarianza para su posterior uso.
+        """
+        super().__init__()
+        self.covariance_estimator = EmpiricalCovariance()
+
+    def _get_inverse_covariance(self, data: np.ndarray) -> np.ndarray:
+        """
+        Ajusta el estimador de covarianza con los datos y retorna la inversa de la
+        matriz de covarianza. Si la matriz no fuera invertible, se retorna la
+        pseudo-inversa (pinv).
+
+        Parámetros:
+        -----------
+        data: np.ndarray
+            Datos con forma (n_muestras, n_dimensiones).
+
+        Retorna:
+        --------
+        inv_cov_matrix: np.ndarray
+            Inversa o pseudo-inversa de la matriz de covarianza estimada.
+        """
+        if data.ndim != 2:
+            raise ValueError("Los datos deben ser una matriz bidimensional (n_muestras, n_dimensiones).")
+        self.covariance_estimator.fit(data)
+        cov_matrix = self.covariance_estimator.covariance_
+        try:
+            inv_cov_matrix = np.linalg.inv(cov_matrix)
+        except np.linalg.LinAlgError:
+            inv_cov_matrix = np.linalg.pinv(cov_matrix)
+        return inv_cov_matrix
+
+    def compute_quantum_mahalanobis(self,
+                                    quantum_states_A: np.ndarray,
+                                    quantum_states_B: np.ndarray) -> np.ndarray:
+        """
+        Calcula la distancia de Mahalanobis para cada estado en 'quantum_states_B'
+        respecto a la distribución de 'quantum_states_A'. Retorna un arreglo 1D
+        con tantas distancias como filas tenga 'quantum_states_B'.
+
+        Parámetros:
+        -----------
+        quantum_states_A: np.ndarray
+            Representa el conjunto de estados cuánticos de referencia.
+            Forma esperada: (n_muestras, n_dimensiones).
+
+        quantum_states_B: np.ndarray
+            Estados cuánticos para los que calcularemos la distancia
+            de Mahalanobis. Forma: (n_muestras, n_dimensiones).
+
+        Retorna:
+        --------
+        distances: np.ndarray
+            Distancias de Mahalanobis calculadas para cada entrada de B.
+        """
+        if quantum_states_A.ndim != 2 or quantum_states_B.ndim != 2:
+            raise ValueError("Los estados cuánticos deben ser matrices bidimensionales.")
+        if quantum_states_A.shape[1] != quantum_states_B.shape[1]:
+            raise ValueError("La dimensión (n_dimensiones) de A y B debe coincidir.")
+
+        inv_cov_matrix = self._get_inverse_covariance(quantum_states_A)
+        mean_A = np.mean(quantum_states_A, axis=0)
+
+        diff_B = quantum_states_B - mean_A  # (n_samples_B, n_dims)
+        aux = diff_B @ inv_cov_matrix       # (n_samples_B, n_dims)
+        dist_sqr = np.einsum('ij,ij->i', aux, diff_B)  # Producto elemento a elemento y sumatoria por fila
+        distances = np.sqrt(dist_sqr)
+        return distances
+
+    def quantum_cosine_projection(self,
+                                  quantum_states: np.ndarray,
+                                  entropy: float,
+                                  coherence: float) -> tf.Tensor:
+        """
+        Proyecta los estados cuánticos usando cosenos directores y calcula la
+        distancia de Mahalanobis entre dos proyecciones vectorizadas (A y B).
+        Finalmente retorna las distancias normalizadas (softmax).
+
+        Parámetros:
+        -----------
+        quantum_states: np.ndarray
+            Estados cuánticos de entrada con forma (n_muestras, 2).
+        entropy: float
+            Entropía del sistema a usar en la función calculate_cosines.
+        coherence: float
+            Coherencia del sistema a usar en la función calculate_cosines.
+
+        Retorna:
+        --------
+        normalized_distances: tf.Tensor
+            Tensor 1D con las distancias normalizadas (softmax).
+        """
+        if quantum_states.shape[1] != 2:
+            raise ValueError("Se espera que 'quantum_states' tenga exactamente 2 columnas.")
+        cos_x, cos_y, cos_z = calculate_cosines(entropy, coherence)
+
+        # Proyección A: multiplicar cada columna por (cos_x, cos_y)
+        projected_states_A = quantum_states * np.array([cos_x, cos_y])
+        # Proyección B: multiplicar cada columna por (cos_x*cos_z, cos_y*cos_z)
+        projected_states_B = quantum_states * np.array([cos_x * cos_z, cos_y * cos_z])
+
+        # Calcular distancias de Mahalanobis vectorizadas
+        mahalanobis_distances = self.compute_quantum_mahalanobis(
+            projected_states_A,
+            projected_states_B
+        )
+
+        # Convertir a tensor y normalizar con softmax
+        mahalanobis_distances_tf = tf.convert_to_tensor(mahalanobis_distances, dtype=tf.float32)
+        normalized_distances = tf.nn.softmax(mahalanobis_distances_tf)
+        return normalized_distances
+
+    def calculate_quantum_posterior_with_mahalanobis(self,
+                                                     quantum_states: np.ndarray,
+                                                     entropy: float,
+                                                     coherence: float):
+        """
+        Calcula la probabilidad posterior usando la distancia de Mahalanobis
+        en proyecciones cuánticas e integra la lógica de Bayes.
+
+        Parámetros:
+        -----------
+        quantum_states: np.ndarray
+            Matriz de estados cuánticos (n_muestras, 2).
+        entropy: float
+            Entropía del sistema.
+        coherence: float
+            Coherencia del sistema.
+
+        Retorna:
+        --------
+        posterior: tf.Tensor
+            Probabilidad posterior calculada combinando la lógica bayesiana.
+        quantum_projections: tf.Tensor
+            Proyecciones cuánticas normalizadas (distancias softmax).
+        """
+        quantum_projections = self.quantum_cosine_projection(
+            quantum_states,
+            entropy,
+            coherence
+        )
+
+        # Calcular covarianza en las proyecciones
+        tensor_projections = tf.convert_to_tensor(quantum_projections, dtype=tf.float32)
+        quantum_covariance = tfp.stats.covariance(tensor_projections, sample_axis=0)
+
+        # Calcular prior cuántico basado en la traza de la covarianza
+        dim = tf.cast(tf.shape(quantum_covariance)[0], tf.float32)
+        quantum_prior = tf.linalg.trace(quantum_covariance) / dim
+
+        # Calcular otros componentes para la posteriori (usando métodos heredados de BayesLogic).
+        prior_coherence = self.calculate_high_coherence_prior(coherence)
+        joint_prob = self.calculate_joint_probability(
+            coherence,
+            1,  # variable arbitraria: "evento" = 1
+            tf.reduce_mean(tensor_projections)
+        )
+        cond_prob = self.calculate_conditional_probability(joint_prob, quantum_prior)
+        posterior = self.calculate_posterior_probability(quantum_prior,
+                                                         prior_coherence,
+                                                         cond_prob)
+        return posterior, quantum_projections
+
+    def predict_quantum_state(self,
+                              quantum_states: np.ndarray,
+                              entropy: float,
+                              coherence: float):
+        """
+        Predice el siguiente estado cuántico con base en la proyección y la distancia
+        de Mahalanobis, generando un "estado futuro".
+
+        Parámetros:
+        -----------
+        quantum_states: np.ndarray
+            Estados cuánticos de entrada (n_muestras, 2).
+        entropy: float
+            Entropía del sistema.
+        coherence: float
+            Coherencia del sistema.
+
+        Retorna:
+        --------
+        next_state_prediction: tf.Tensor
+            Predicción del siguiente estado cuántico.
+        posterior: tf.Tensor
+            Probabilidad posterior que se usó en la predicción.
+        """
+        posterior, projections = self.calculate_quantum_posterior_with_mahalanobis(
+            quantum_states,
+            entropy,
+            coherence
+        )
+
+        # Generar un estado futuro ponderado por la posterior
+        # Posterior es escalar, mientras que projections es un vector
+        next_state_prediction = tf.reduce_sum(
+            tf.multiply(projections, tf.expand_dims(posterior, -1)),
+            axis=0
+        )
+        return next_state_prediction, posterior
+
+     
     def shannon_entropy(self, data: List[Union[int, float]]) -> float:
         """
         Calcula la entropía de Shannon de un conjunto de datos.
