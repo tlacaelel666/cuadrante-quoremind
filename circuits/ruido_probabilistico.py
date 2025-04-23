@@ -391,11 +391,67 @@ def calculate_cosines(entropy: float, env_value: float) -> Tuple[float, float, f
 
 class BayesLogic:
     """
-    Clase para implementar lógica bayesiana utilizada en los cálculos de FFTBayesIntegrator.
-    (Implementación simplificada)
+    Clase para implementar lógica bayesiana utilizada en los cálculos
+"""
+class BayesLogic:
     """
-    def __init__(self):
-        pass
+    Clase para calcular probabilidades y seleccionar acciones basadas en el teorema de Bayes.
+    
+    Provee métodos para:
+      - Calcular la probabilidad posterior usando Bayes.
+      - Calcular probabilidades condicionales.
+      - Derivar probabilidades previas en función de la entropía y la coherencia.
+      - Calcular probabilidades conjuntas a partir de la coherencia, acción e influencia PRN.
+      - Seleccionar la acción final según un umbral predefinido.
+    """
+    def __init__(self) -> None:
+        self.EPSILON = 1e-6
+        self.HIGH_ENTROPY_THRESHOLD = 0.8
+        self.HIGH_COHERENCE_THRESHOLD = 0.6
+        self.ACTION_THRESHOLD = 0.5
+
+    def calculate_posterior_probability(self, prior_a: float, prior_b: float, conditional_b_given_a: float) -> float:
+        prior_b = prior_b if prior_b != 0 else self.EPSILON
+        return (conditional_b_given_a * prior_a) / prior_b
+
+    def calculate_conditional_probability(self, joint_probability: float, prior: float) -> float:
+        prior = prior if prior != 0 else self.EPSILON
+        return joint_probability / prior
+
+    def calculate_high_entropy_prior(self, entropy: float) -> float:
+        return 0.3 if entropy > self.HIGH_ENTROPY_THRESHOLD else 0.1
+
+    def calculate_high_coherence_prior(self, coherence: float) -> float:
+        return 0.6 if coherence > self.HIGH_COHERENCE_THRESHOLD else 0.2
+
+    def calculate_joint_probability(self, coherence: float, action: int, prn_influence: float) -> float:
+        if coherence > self.HIGH_COHERENCE_THRESHOLD:
+            if action == 1:
+                return prn_influence * 0.8 + (1 - prn_influence) * 0.2
+            else:
+                return prn_influence * 0.1 + (1 - prn_influence) * 0.7
+        return 0.3
+
+    def calculate_probabilities_and_select_action(self, entropy: float, coherence: float, prn_influence: float,
+                                                  action: int) -> Dict[str, float]:
+        high_entropy_prior = self.calculate_high_entropy_prior(entropy)
+        high_coherence_prior = self.calculate_high_coherence_prior(coherence)
+        conditional_b_given_a = (prn_influence * 0.7 + (1 - prn_influence) * 0.3
+                                 if entropy > self.HIGH_ENTROPY_THRESHOLD else 0.2)
+        posterior_a_given_b = self.calculate_posterior_probability(high_entropy_prior, high_coherence_prior, conditional_b_given_a)
+        joint_probability_ab = self.calculate_joint_probability(coherence, action, prn_influence)
+        conditional_action_given_b = self.calculate_conditional_probability(joint_probability_ab, high_coherence_prior)
+        action_to_take = 1 if conditional_action_given_b > self.ACTION_THRESHOLD else 0
+
+        return {
+            "action_to_take": action_to_take,
+            "high_entropy_prior": high_entropy_prior,
+            "high_coherence_prior": high_coherence_prior,
+            "posterior_a_given_b": posterior_a_given_b,
+            "conditional_action_given_b": conditional_action_given_b
+        }
+
+
 
     # Métodos adicionales de lógica bayesiana se implementarían aquí
 
