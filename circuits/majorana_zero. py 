@@ -1,0 +1,322 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D
+
+# 🔬 Representación del estado cuántico con modos Majorana
+class MajoranaQubit:
+    def __init__(self, initial_state=None):
+        """
+        Inicializa un qubit Majorana.
+        
+        Args:
+            initial_state: Vector de estado inicial. Por defecto |0⟩.
+        """
+        if initial_state is None:
+            self.state = np.array([1, 0], dtype=complex)  # |0⟩
+        else:
+            # Normalizar el estado inicial
+            self.state = np.array(initial_state, dtype=complex)
+            self.state = self.state / np.linalg.norm(self.state)
+    
+    def apply_gate(self, gate_matrix):
+        """
+        Aplica una puerta cuántica sobre el estado.
+        
+        Args:
+            gate_matrix: Matriz 2x2 que representa la puerta cuántica.
+        """
+        self.state = np.dot(gate_matrix, self.state)
+        # Renormalizar para evitar errores numéricos
+        self.state = self.state / np.linalg.norm(self.state)
+    
+    def measure(self):
+        """
+        Realiza una medición del estado cuántico, causando el colapso.
+        
+        Returns:
+            int: 0 o 1, resultado de la medición.
+        """
+        # Cálculo correcto de probabilidades
+        p0 = np.abs(self.state[0])**2
+        p1 = np.abs(self.state[1])**2
+        result = np.random.choice([0, 1], p=[p0, p1])
+        
+        # Colapso del estado después de la medición
+        self.state = np.array([1, 0], dtype=complex) if result == 0 else np.array([0, 1], dtype=complex)
+        return result
+    
+    def get_bloch_vector(self):
+        """
+        Calcula las coordenadas del vector de Bloch para el estado actual.
+        
+        Returns:
+            tuple: Coordenadas (x, y, z) en la esfera de Bloch.
+        """
+        # Extraer componentes del estado
+        alpha = self.state[0]
+        beta = self.state[1]
+        
+        # Calcular componentes del vector de Bloch
+        x = 2 * np.real(alpha * np.conj(beta))
+        y = 2 * np.imag(alpha * np.conj(beta))
+        z = np.abs(alpha)**2 - np.abs(beta)**2
+        
+        return (x, y, z)
+    
+    def get_density_matrix(self):
+        """
+        Calcula la matriz de densidad para el estado actual.
+        
+        Returns:
+            array: Matriz de densidad 2x2.
+        """
+        return np.outer(self.state, np.conj(self.state))
+
+# ⚡ Definimos puertas cuánticas comunes
+class QuantumGates:
+    # Matrices de Pauli
+    PAULI_I = np.array([[1, 0], [0, 1]], dtype=complex)
+    PAULI_X = np.array([[0, 1], [1, 0]], dtype=complex)
+    PAULI_Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+    PAULI_Z = np.array([[1, 0], [0, -1]], dtype=complex)
+    
+    # Otras puertas comunes
+    HADAMARD = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
+    PHASE_S = np.array([[1, 0], [0, 1j]], dtype=complex)
+    PHASE_T = np.array([[1, 0], [0, np.exp(1j * np.pi/4)]], dtype=complex)
+    
+    @staticmethod
+    def rotation_x(theta):
+        """Rotación alrededor del eje X en la esfera de Bloch."""
+        return np.array([
+            [np.cos(theta/2), -1j * np.sin(theta/2)],
+            [-1j * np.sin(theta/2), np.cos(theta/2)]
+        ], dtype=complex)
+    
+    @staticmethod
+    def rotation_y(theta):
+        """Rotación alrededor del eje Y en la esfera de Bloch."""
+        return np.array([
+            [np.cos(theta/2), -np.sin(theta/2)],
+            [np.sin(theta/2), np.cos(theta/2)]
+        ], dtype=complex)
+    
+    @staticmethod
+    def rotation_z(theta):
+        """Rotación alrededor del eje Z en la esfera de Bloch."""
+        return np.array([
+            [np.exp(-1j * theta/2), 0],
+            [0, np.exp(1j * theta/2)]
+        ], dtype=complex)
+
+# 🚀 Simulación del sistema cuántico con microondas
+class MicrowaveControl:
+    def __init__(self, frequency, amplitude=1.0, detuning=0.0):
+        """
+        Inicializa el control de microondas.
+        
+        Args:
+            frequency: Frecuencia de la señal de microondas.
+            amplitude: Amplitud de la señal (controla la fuerza del acoplamiento).
+            detuning: Desajuste de la frecuencia respecto a la frecuencia de resonancia.
+        """
+        self.frequency = frequency
+        self.amplitude = amplitude
+        self.detuning = detuning
+        self.time = 0.0
+    
+    def update_parameters(self, frequency=None, amplitude=None, detuning=None):
+        """Actualiza los parámetros del control de microondas."""
+        if frequency is not None:
+            self.frequency = frequency
+        if amplitude is not None:
+            self.amplitude = amplitude
+        if detuning is not None:
+            self.detuning = detuning
+    
+    def modulate(self, qubit, dt=0.01):
+        """
+        Modula el qubit con microondas (control de fase en Majorana).
+        
+        Args:
+            qubit: Instancia de MajoranaQubit a modular.
+            dt: Incremento de tiempo para la evolución.
+        """
+        self.time += dt
+        
+        # Modulación realista con términos de fase y amplitud
+        phase_shift = self.amplitude * np.sin(self.frequency * self.time * 2 * np.pi)
+        detuning_effect = np.exp(1j * self.detuning * self.time)
+        
+        # Construimos el operador de evolución temporal
+        evolution_operator = np.array([
+            [np.cos(phase_shift) * detuning_effect, -np.sin(phase_shift)], 
+            [np.sin(phase_shift), np.cos(phase_shift) * np.conj(detuning_effect)]
+        ], dtype=complex)
+        
+        # Normalizamos el operador para preservar unitariedad
+        qubit.apply_gate(evolution_operator)
+
+# 🔬 Simulación con evolución dinámica y entorno con ruido
+class QuantumSimulation:
+    def __init__(self, qubit, microwave, decoherence_rate=0.01):
+        """
+        Inicializa la simulación cuántica.
+        
+        Args:
+            qubit: Instancia de MajoranaQubit.
+            microwave: Instancia de MicrowaveControl.
+            decoherence_rate: Tasa de decoherencia (efectos del entorno).
+        """
+        self.qubit = qubit
+        self.microwave = microwave
+        self.decoherence_rate = decoherence_rate
+        self.state_history = []
+        self.bloch_history = []
+    
+    def apply_decoherence(self):
+        """Aplica efectos de decoherencia al estado cuántico."""
+        # Implementación simplificada de decoherencia mediante un canal de despolarización
+        if np.random.random() < self.decoherence_rate:
+            # Aplicar una puerta aleatoria de Pauli con probabilidad baja
+            random_gate = np.random.choice([
+                QuantumGates.PAULI_I, 
+                QuantumGates.PAULI_X, 
+                QuantumGates.PAULI_Y, 
+                QuantumGates.PAULI_Z
+            ])
+            self.qubit.apply_gate(random_gate)
+    
+    def run_step(self, apply_hadamard=True):
+        """Ejecuta un paso de la simulación."""
+        self.microwave.modulate(self.qubit)
+        
+        if apply_hadamard:
+            self.qubit.apply_gate(QuantumGates.HADAMARD)
+            
+        self.apply_decoherence()
+        
+        # Registramos el estado y las coordenadas de Bloch
+        state_prob = np.abs(self.qubit.state[0])**2
+        self.state_history.append(state_prob)
+        self.bloch_history.append(self.qubit.get_bloch_vector())
+    
+    def run_simulation(self, steps, apply_hadamard=True):
+        """
+        Ejecuta la simulación completa.
+        
+        Args:
+            steps: Número de pasos a simular.
+            apply_hadamard: Si es True, aplica la puerta Hadamard en cada paso.
+        """
+        for _ in range(steps):
+            self.run_step(apply_hadamard)
+        
+        return self.state_history, self.bloch_history
+
+# 🎯 Función para visualización avanzada
+def visualize_simulation(simulation, title="Simulación Cuántica"):
+    """
+    Crea visualizaciones de la evolución del sistema.
+    
+    Args:
+        simulation: Instancia de QuantumSimulation después de ejecutar run_simulation.
+        title: Título para las gráficas.
+    """
+    # Creamos una figura con subplots
+    fig = plt.figure(figsize=(15, 10))
+    fig.suptitle(title, fontsize=16)
+    
+    # Subplot 1: Evolución de la probabilidad de |0⟩
+    ax1 = fig.add_subplot(2, 2, 1)
+    ax1.plot(range(len(simulation.state_history)), simulation.state_history, 'b-', lw=2)
+    ax1.set_xlabel("Tiempo (Pasos)")
+    ax1.set_ylabel("Probabilidad en |0⟩")
+    ax1.set_title("Evolución de la amplitud de probabilidad")
+    ax1.grid(True)
+    
+    # Subplot 2: Trayectoria en la esfera de Bloch (proyección 2D)
+    ax2 = fig.add_subplot(2, 2, 2)
+    bloch_x = [b[0] for b in simulation.bloch_history]
+    bloch_y = [b[1] for b in simulation.bloch_history]
+    ax2.plot(bloch_x, bloch_y, 'r-', lw=1)
+    ax2.scatter(bloch_x[-1], bloch_y[-1], c='red', s=50, label='Estado final')
+    ax2.set_xlabel("X")
+    ax2.set_ylabel("Y")
+    ax2.set_title("Proyección XY en la esfera de Bloch")
+    ax2.grid(True)
+    ax2.set_aspect('equal')
+    ax2.legend()
+    
+    # Subplot 3: Esfera de Bloch completa (3D)
+    ax3 = fig.add_subplot(2, 2, 3, projection='3d')
+    
+    # Dibujar la esfera
+    u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+    x = np.cos(u) * np.sin(v)
+    y = np.sin(u) * np.sin(v)
+    z = np.cos(v)
+    ax3.plot_wireframe(x, y, z, color="gray", alpha=0.2)
+    
+    # Dibujar los ejes
+    ax3.quiver(0, 0, 0, 1, 0, 0, color='r', arrow_length_ratio=0.1, label='X')
+    ax3.quiver(0, 0, 0, 0, 1, 0, color='g', arrow_length_ratio=0.1, label='Y')
+    ax3.quiver(0, 0, 0, 0, 0, 1, color='b', arrow_length_ratio=0.1, label='Z')
+    
+    # Dibujar la trayectoria del estado
+    bloch_x = [b[0] for b in simulation.bloch_history]
+    bloch_y = [b[1] for b in simulation.bloch_history]
+    bloch_z = [b[2] for b in simulation.bloch_history]
+    ax3.plot(bloch_x, bloch_y, bloch_z, 'r-', lw=2, label='Trayectoria')
+    ax3.scatter(bloch_x[-1], bloch_y[-1], bloch_z[-1], c='red', s=50, label='Estado final')
+    
+    ax3.set_xlabel("X")
+    ax3.set_ylabel("Y")
+    ax3.set_zlabel("Z")
+    ax3.set_title("Esfera de Bloch")
+    ax3.legend()
+    
+    # Subplot 4: Histograma de mediciones
+    ax4 = fig.add_subplot(2, 2, 4)
+    # Simulación de múltiples mediciones para obtener estadísticas
+    measurements = []
+    original_state = simulation.qubit.state.copy()
+    
+    for _ in range(1000):
+        # Restaurar el estado original antes de medir
+        simulation.qubit.state = original_state.copy()
+        measurements.append(simulation.qubit.measure())
+    
+    # Restaurar el estado original después de las mediciones
+    simulation.qubit.state = original_state.copy()
+    
+    ax4.hist(measurements, bins=[0, 0.5, 1], align='left', rwidth=0.4)
+    ax4.set_xlabel("Resultado de la medición")
+    ax4.set_ylabel("Frecuencia")
+    ax4.set_title("Histograma de mediciones")
+    ax4.set_xticks([0, 1])
+    ax4.set_xticklabels(['|0⟩', '|1⟩'])
+    
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.9)
+    
+    return fig
+
+# Ejemplo de uso mejorado
+if __name__ == "__main__":
+    # Inicializar el sistema cuántico
+    qubit = MajoranaQubit()
+    microwave = MicrowaveControl(frequency=0.5, amplitude=0.2, detuning=0.05)
+    
+    # Configurar la simulación
+    simulation = QuantumSimulation(qubit, microwave, decoherence_rate=0.01)
+    
+    # Ejecutar la simulación
+    simulation.run_simulation(steps=100)
+    
+    # Visualizar resultados
+    fig = visualize_simulation(simulation, 
+                             "Evolución del qubit Majorana bajo control de microondas")
+    
+    plt.show()
