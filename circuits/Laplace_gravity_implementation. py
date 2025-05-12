@@ -1,0 +1,394 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.animation import FuncAnimation
+from scipy.fft import fft2, fftshift
+import scipy.sparse as sparse
+import scipy.sparse.linalg as splinalg
+
+def crear_malla(x_min, x_max, nx, y_min, y_max, ny):
+    """Crea una malla 2D y devuelve las matrices X, Y y los vectores x, y."""
+    x = np.linspace(x_min, x_max, nx)
+    y = np.linspace(y_min, y_max, ny)
+    X, Y = np.meshgrid(x, y)
+    return {'X': X, 'Y': Y, 'x': x, 'y': y}
+
+def inicializar_densidad_barionica(grid, rho0=1.0, sigma=0.5):
+    """Inicializa la densidad bariónica como una gaussiana."""
+    X, Y = grid['X'], grid['Y']
+    rho = rho0 * np.exp(-(X**2 + Y**2) / (2 * sigma**2))
+    return rho
+
+def inicializar_densidad_oscura(grid, rho0=0.2, sigma=1.0, offset_x=1.5):
+    """Inicializa la densidad de materia oscura como una gaussiana desplazada."""
+    X, Y = grid['X'], grid['Y']
+    rho = rho0 * np.exp(-((X-offset_x)**2 + Y**2) / (2 * sigma**2))
+    return rho
+
+def inicializar_estado_cuantico(grid, sigma=0.3, k0_x=5.0, x0=-1.0, y0=0.0):
+    """
+    Inicializa un paquete de onda gaussiano con momento inicial.
+    ψ(x,y) = A * exp(-(r-r₀)²/(4σ²)) * exp(ik₀·r)
+    """
+    X, Y = grid['X'], grid['Y']
+    r_squared = (X-x0)**2 + (Y-y0)**2
+    
+    # Normalización
+    normalization = 1.0 / (2 * np.pi * sigma**2)**(1/2)
+    
+    # Función de onda gaussiana con momento inicial
+    psi = normalization * np.exp(-r_squared / (4 * sigma**2)) * np.exp(1j * k0_x * X)
+    
+    # Normalizar la función de onda
+    psi = psi / np.sqrt(np.sum(np.abs(psi)**2))
+    
+    return psi
+
+def construir_operador_laplaciano(nx, ny, dx, dy):
+    """
+    Construye una matriz dispersa que representa el operador laplaciano en diferencias finitas.
+    Utiliza condiciones de contorno periódicas.
+    """
+    # Total de puntos en la malla
+    n = nx * ny
+    
+    # Diagonales para el operador laplaciano 2D
+    diagonals = []
+    offsets = []
+    
+    # Término central: -2/dx² - 2/dy²
+    diagonals.append(np.full(n, -2.0/dx**2 - 2.0/dy**2))
+    offsets.append(0)
+    
+    # Términos en x: 1/dx²
+    diag_x_plus = np.ones(n)
+    diag_x_minus = np.ones(n)
+    
+    # Ajuste para condiciones periódicas en x
+    for i in range(ny):
+        diag_x_plus[i*nx - 1] = 0  # Último punto en fila i
+        diag_x_minus[i*nx] = 0     # Primer punto en fila i
+    
+    diagonals.append(diag_x_plus / dx**2)
+    diagonals.append(diag_x_minus / dx**2)
+    offsets.append(1)
+    offsets.append(-1)
+    
+    # Términos en y: 1/dy²
+    diag_y_plus = np.ones(n)
+    diag_y_minus = np.ones(n)
+    
+    # Condiciones periódicas en y serían similares...
+    diagonals.append(diag_y_plus / dy**2)
+    diagonals.append(diag_y_minus / dy**2)
+    offsets.append(nx)
+    offsets.append(-nx)
+    
+    # Construir matriz dispersa
+    laplaciano = sparse.diags(diagonals, offsets, shape=(n, n), format='csr')
+    
+    return laplaciano
+
+def aplicar_operador(operador, psi):
+    """Aplica un operador (matriz dispersa) a la función de onda."""
+    psi_flat = psi.flatten()
+    resultado_flat = operador.dot(psi_flat)
+    return resultado_flat.reshape(psi.shape)
+
+def multiplicar_matriz(matriz, psi):
+    """Multiplica la matriz de potencial elemento a elemento con la función de onda."""
+    return matriz * psi
+
+def evolucionar_estado(psi, H_func, dt, hbar):
+    """
+    Evoluciona el estado cuántico usando el método de Crank-Nicolson para
+    preservar la unitariedad y estabilidad numérica.
+    """
+    # Dimensiones de la función de onda
+    shape = psi.shape
+    n = np.prod(shape)
+    
+    # Convertir a vector
+    psi_flat = psi.flatten()
+    
+    # Aplicar el hamiltoniano
+    H_psi = H_func(psi).flatten()
+    
+    # Operador de evolución temporal (primer orden)
+    # ψ(t+dt) ≈ ψ(t) - i*dt/ħ * H*ψ(t)
+    psi_new = psi_flat - 1j * dt / hbar * H_psi
+    
+    # Normalizar el nuevo estado
+    norm = np.sqrt(np.sum(np.abs(psi_new)**2))
+    psi_new = psi_new / norm
+    
+    return psi_new.reshape(shape)
+
+def calcular_entropia_shannon(psi):
+    """
+    Calcula la entropía de Shannon de la distribución de probabilidad |ψ|².
+    S = -∑ p(x,y) log p(x,y)
+    """
+    # Calcular la densidad de probabilidad
+    p = np.abs(psi)**2
+    
+    # Normalizar la probabilidad
+    p = p / np.sum(p)
+    
+    # Evitar log(0)
+    p = np.where(p > 0, p, 1e-16)
+    
+    # Calcular la entropía
+    S = -np.sum(p * np.log(p))
+    
+    return S
+
+def visualizar_resultados(potencial, FFT_potencial, psi_final, decoherencia_list, grid):
+    """Visualiza los resultados de la simulación."""
+    fig = plt.figure(figsize=(20, 12))
+    
+    # Subplot para el potencial
+    ax1 = fig.add_subplot(231)
+    im1 = ax1.imshow(potencial.real, extent=[grid['x'][0], grid['x'][-1], grid['y'][0], grid['y'][-1]], 
+                    origin='lower', cmap=cm.viridis)
+    ax1.set_title('Potencial gravitacional Φ')
+    plt.colorbar(im1, ax=ax1)
+    
+    # Subplot para el espectro de potencia del potencial
+    ax2 = fig.add_subplot(232)
+    spectrum = np.abs(FFT_potencial)**2
+    # Normalizar para visualización logarítmica
+    spectrum = np.log(spectrum + 1)
+    im2 = ax2.imshow(spectrum, origin='lower', cmap=cm.plasma)
+    ax2.set_title('Espectro de potencia (log)')
+    plt.colorbar(im2, ax=ax2)
+    
+    # Subplot para la densidad de probabilidad final
+    ax3 = fig.add_subplot(233)
+    im3 = ax3.imshow(np.abs(psi_final)**2, extent=[grid['x'][0], grid['x'][-1], grid['y'][0], grid['y'][-1]], 
+                    origin='lower', cmap=cm.magma)
+    ax3.set_title('Densidad de probabilidad |ψ|²')
+    plt.colorbar(im3, ax=ax3)
+    
+    # Subplot para la fase de la función de onda
+    ax4 = fig.add_subplot(234)
+    im4 = ax4.imshow(np.angle(psi_final), extent=[grid['x'][0], grid['x'][-1], grid['y'][0], grid['y'][-1]], 
+                    origin='lower', cmap=cm.twilight)
+    ax4.set_title('Fase de la función de onda')
+    plt.colorbar(im4, ax=ax4)
+    
+    # Subplot para la evolución de la decoherencia
+    ax5 = fig.add_subplot(235)
+    ax5.plot(range(len(decoherencia_list)), decoherencia_list)
+    ax5.set_title('Evolución de la entropía (decoherencia)')
+    ax5.set_xlabel('Pasos temporales')
+    ax5.set_ylabel('Entropía de Shannon')
+    
+    plt.tight_layout()
+    plt.savefig('resultados_simulacion.png', dpi=300)
+    plt.show()
+
+def main():
+    """Función principal para ejecutar la simulación."""
+    # 1. Definir el dominio espacial y la malla (en 2D)
+    L = 5.0  # Extensión espacial
+    N_x = 100  # Número de puntos en x
+    N_y = 100  # Número de puntos en y
+    
+    x_min, x_max, nx = -L, L, N_x
+    y_min, y_max, ny = -L, L, N_y
+    dx = (x_max - x_min) / (nx - 1)
+    dy = (y_max - y_min) / (ny - 1)
+    
+    grid = crear_malla(x_min, x_max, nx, y_min, y_max, ny)
+    
+    # 2. Constantes y parámetros físicos
+    G = 6.674e-11  # Constante de gravitación en m³/(kg·s²)
+    # Escalamos para la simulación
+    G = 1.0  # Unidades adimensionales para la simulación
+    
+    mu = 0.1  # Parámetro de screening (para potencial tipo Yukawa)
+    pi = np.pi
+    
+    # 3. Inicializar las distribuciones de densidad
+    rho_B = inicializar_densidad_barionica(grid)
+    rho_DM = inicializar_densidad_oscura(grid)
+    
+    # Mostrar las distribuciones iniciales
+    plt.figure(figsize=(14, 6))
+    
+    plt.subplot(121)
+    plt.imshow(rho_B, extent=[x_min, x_max, y_min, y_max], origin='lower', cmap=cm.viridis)
+    plt.colorbar()
+    plt.title('Densidad de materia bariónica')
+    
+    plt.subplot(122)
+    plt.imshow(rho_DM, extent=[x_min, x_max, y_min, y_max], origin='lower', cmap=cm.plasma)
+    plt.colorbar()
+    plt.title('Densidad de materia oscura')
+    
+    plt.tight_layout()
+    plt.savefig('distribuciones_iniciales.png', dpi=300)
+    plt.show()
+    
+    # 4. Inicializar el potencial Φ en la malla
+    Phi = np.zeros((nx, ny))
+    
+    # 5. Resolver la ecuación de Poisson modificada
+    # Método iterativo de relajación
+    tolerancia = 1e-6
+    max_iter = 10000
+    error = 1.0
+    iteracion = 0
+    
+    print("Resolviendo la ecuación de Poisson modificada...")
+    
+    while (error > tolerancia) and (iteracion < max_iter):
+        error = 0
+        # Recorremos los puntos internos
+        for i in range(1, nx - 1):
+            for j in range(1, ny - 1):
+                # Aproximación del laplaciano con diferencias finitas
+                laplaciano = (Phi[i+1, j] - 2 * Phi[i, j] + Phi[i-1, j]) / dx**2 \
+                           + (Phi[i, j+1] - 2 * Phi[i, j] + Phi[i, j-1]) / dy**2
+                
+                # Término derecho: 4πG*(rho_B + rho_DM)
+                RHS = 4 * pi * G * (rho_B[i, j] + rho_DM[i, j])
+                
+                # Reorganizamos la ecuación para el potencial tipo Yukawa
+                coef = (2/dx**2 + 2/dy**2 - mu**2)
+                Phi_new = ((Phi[i+1, j] + Phi[i-1, j]) / dx**2 \
+                          + (Phi[i, j+1] + Phi[i, j-1]) / dy**2 - RHS) / coef
+                
+                # Actualizar error y potencial
+                error = max(error, abs(Phi_new - Phi[i, j]))
+                Phi[i, j] = Phi_new
+        
+        iteracion += 1
+        if iteracion % 100 == 0:
+            print(f"Iteración {iteracion}, Error = {error:.6e}")
+    
+    print(f"Potencial gravitacional calculado en {iteracion} iteraciones con error {error:.6e}")
+    
+    # Visualizar el potencial resultante
+    plt.figure(figsize=(10, 8))
+    plt.imshow(Phi, extent=[x_min, x_max, y_min, y_max], origin='lower', cmap=cm.viridis)
+    plt.colorbar()
+    plt.title('Potencial gravitacional Φ')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.savefig('potencial_gravitacional.png', dpi=300)
+    plt.show()
+    
+    # 6. Análisis espectral
+    FFT_Phi = fftshift(fft2(Phi))
+    
+    # Visualizar el espectro de potencia
+    plt.figure(figsize=(10, 8))
+    spectrum = np.log(np.abs(FFT_Phi)**2 + 1)  # Escala logarítmica para mejor visualización
+    plt.imshow(spectrum, origin='lower', cmap=cm.plasma)
+    plt.colorbar()
+    plt.title('Espectro de potencia del potencial (escala log)')
+    plt.savefig('espectro_potencial.png', dpi=300)
+    plt.show()
+    
+    # 7. Inicializar el estado cuántico ψ(x,y)
+    psi = inicializar_estado_cuantico(grid)
+    
+    # Visualizar el estado inicial
+    plt.figure(figsize=(14, 6))
+    
+    plt.subplot(121)
+    plt.imshow(np.abs(psi)**2, extent=[x_min, x_max, y_min, y_max], origin='lower', cmap=cm.magma)
+    plt.colorbar()
+    plt.title('Densidad de probabilidad inicial |ψ|²')
+    
+    plt.subplot(122)
+    plt.imshow(np.angle(psi), extent=[x_min, x_max, y_min, y_max], origin='lower', cmap=cm.twilight)
+    plt.colorbar()
+    plt.title('Fase inicial de la función de onda')
+    
+    plt.tight_layout()
+    plt.savefig('estado_inicial.png', dpi=300)
+    plt.show()
+    
+    # 8. Definir parámetros para el Hamiltoniano
+    m_particula = 1.0  # Masa adimensional de la partícula
+    hbar = 1.0  # Constante de Planck reducida (adimensional)
+    
+    # Construir el operador laplaciano
+    Laplaciano_operator = construir_operador_laplaciano(nx, ny, dx, dy)
+    
+    # Función para aplicar el Hamiltoniano
+    def H(psi):
+        # Término cinético: - (ħ²/2m) ∇²ψ
+        psi_flat = psi.flatten()
+        termcin_flat = - (hbar**2 / (2 * m_particula)) * Laplaciano_operator.dot(psi_flat)
+        termcin = termcin_flat.reshape(psi.shape)
+        
+        # Término potencial: m Φ ψ
+        termpot = m_particula * Phi * psi
+        
+        return termcin + termpot
+    
+    # 9. Evolución temporal
+    dt = 0.01  # Paso temporal
+    t_final = 2.0  # Tiempo final
+    n_t = int(t_final / dt)
+    
+    decoherencia_list = []  # Para almacenar la evolución de la decoherencia
+    
+    # Almacenar estados para animación
+    estados = [np.abs(psi)**2]
+    
+    print(f"Iniciando evolución temporal para {n_t} pasos...")
+    
+    for step in range(n_t):
+        # Evolucionar el estado
+        psi = evolucionar_estado(psi, H, dt, hbar)
+        
+        # Calcular medida de decoherencia
+        decoherencia = calcular_entropia_shannon(psi)
+        decoherencia_list.append(decoherencia)
+        
+        # Guardar el estado para animación
+        if step % 10 == 0:  # Guardar cada 10 pasos para reducir memoria
+            estados.append(np.abs(psi)**2)
+        
+        # Mostrar progreso
+        if step % 100 == 0:
+            print(f"Paso {step}/{n_t}, Entropía = {decoherencia:.6f}")
+    
+    print("Evolución temporal completada.")
+    
+    # 10. Visualizar los resultados finales
+    visualizar_resultados(Phi, FFT_Phi, psi, decoherencia_list, grid)
+    
+    # 11. Crear animación de la evolución
+    fig, ax = plt.subplots(figsize=(8, 8))
+    
+    def init():
+        ax.clear()
+        im = ax.imshow(estados[0], extent=[x_min, x_max, y_min, y_max], 
+                      origin='lower', cmap=cm.magma, vmin=0, vmax=np.max(estados[0])*1.5)
+        ax.set_title('Evolución de la densidad de probabilidad |ψ|²')
+        return [im]
+    
+    def animate(i):
+        ax.clear()
+        im = ax.imshow(estados[i], extent=[x_min, x_max, y_min, y_max], 
+                      origin='lower', cmap=cm.magma, vmin=0, vmax=np.max(estados[0])*1.5)
+        ax.set_title(f'Paso {i*10}, t = {i*10*dt:.2f}')
+        return [im]
+    
+    anim = FuncAnimation(fig, animate, init_func=init, frames=len(estados), interval=50, blit=True)
+    
+    # Guardar la animación
+    anim.save('evolucion_cuantica.gif', writer='pillow', fps=10, dpi=100)
+    
+    plt.show()
+    
+    print("Simulación completada con éxito.")
+
+if __name__ == "__main__":
+    main()
