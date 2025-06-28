@@ -11,8 +11,6 @@ for the file.
 
 ![License: Apache 2.0](https://img.shields.io/badge/License-Apache2.0-yellow.svg)
 ![Project Status](https://img.shields.io/badge/Project%20Status-In%20Progress-blue)
-![Build Status](https://github.com/jako/QuoreMind/actions/workflows/ci.yml/badge.svg)
-![development](https://github.com/jako/QuoreMind/actions/workflows/ci.yml)
 ![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)
 
 
