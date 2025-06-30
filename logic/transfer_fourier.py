@@ -1,12 +1,4 @@
 # transfer_fourier.py
-"""
-A continuación te presento el script completo (o al menos la parte faltante) con la función fft_based_initializer añadida y varios comentarios/documentación en el código. Este script integra la lógica bayesiana y el análisis estadístico junto con la FFT para generar características que pueden usarse, por ejemplo, para inicializar pesos en redes neuronales o para otros fines en tu framework.
-
-──────────────────────────────────────────────
-Código completo:
-
-------------------------------------------------------------
-"""
 #!/usr/bin/env python3
 """
 Módulo: FFTBayesIntegrator
@@ -284,16 +276,4 @@ La función **simulate_quantum_state** crea una instancia de QuantumState (el es
   - La distribución final de probabilidades.
 
 Finalmente, **main()** es el punto de entrada que invoca la simulación con parámetros de ejemplo.
-
 """
-
-"""
-# Conclusión
-
-Este script está bien estructurado para demostrar cómo integrar la transformada de Fourier y el análisis bayesiano en el procesamiento de estados cuánticos, y cómo extraer características (como magnitudes, fases, entropía y coherencia) que se pueden utilizar en aplicaciones de aprendizaje automático. La función fft_based_initializer ilustra cómo podrías usar estas características para inicializar una red neuronal de manera informada.
-
-La documentación inline y en los docstrings facilita el mantenimiento y la extensión del código, haciendo que el script se convierta en un ejemplo valioso y práctico para tu framework híbrido cuántico-cognitivo.
-
-Este script, con los ajustes realizados, está listo para usarse como base en tu proyecto; por supuesto, a medida que se avance, podrás integrar mejoras y ajustar parámetros según los experimentos y resultados obtenidos.
-
-“””
