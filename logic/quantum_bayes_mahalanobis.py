@@ -271,12 +271,19 @@ class EnhancedPRN(PRN):
         dist_sqr = np.einsum('ij,ij->i', aux, diff)
         distances = np.sqrt(dist_sqr)
         mahal_mean = np.mean(distances)
-
-        # Se registra la distancia promedio
+        
+def von_neumann_entropy(density_matrix: np.ndarray) -> float:
+    """Calcula la entropía de von Neumann para una matriz de densidad."""
+    # Se calculan los valores propios (eigenvalues)
+    eigenvalues = np.linalg.eigvalsh(density_matrix)
+    # Se filtran los valores propios que son cero o negativos para evitar errores en el logaritmo
+    non_zero_eigenvalues = eigenvalues[eigenvalues > 0]
+    # Se calcula la entropía: S = -Tr(ρ log(ρ)) = -Σ λ_i log(λ_i)
+    entropy = -np.sum(non_zero_eigenvalues * np.log(non_zero_eigenvalues))
+    # Se registra la distancia promedio
         self.mahalanobis_records.append(mahal_mean)
 
         return entropy, mahal_mean
-
 
 class QuantumNoiseCollapse(QuantumBayesMahalanobis):
     """
@@ -512,4 +519,5 @@ Notas de la versión refinada:
    evitando duplicar demasiadas llamadas si no se requiere.  
 7) El método simulate_wave_collapse mantiene la estructura original pero con más comentarios y 
    simplificaciones de nombres de variables.  
+8) Se agrega una funcion de entropia que incluye el metodo de Von Neumann para una dimendion densa cuanticamente correcta
 """
